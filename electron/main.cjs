@@ -396,7 +396,7 @@ function runSmoke() {
         setDoc('/gamemode ');
         cm.focus();
         await wait(300);
-        const hintShown = !!document.querySelector('.cm-tooltip .cm-hint-active');
+        const hintShown = !!document.querySelector('.cm-hintbar .cm-hint-active') && !document.querySelector('.cm-tooltip .cm-hint-active');
         setDoc('/gam');
         cm.focus();
         key(' ', { ctrlKey: true });

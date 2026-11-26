@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { loadHintMode, saveHintMode, type HintMode } from './hints.ts';
 import { MAX_TPS, MIN_TPS, loadTps, sanitizeTps, saveTps, ticksDue } from './tps.ts';
 import { useT } from './I18n.tsx';
 import { clockText, dayNumber, daytime } from '../engine/clock.ts';
@@ -83,6 +84,7 @@ export function DocView({ doc, active, host, layout, setLayout, setText, files, 
   const [sel, setSel] = useState<Selection>(null);
   const [softWrap, setSoftWrap] = useState(true);
   const [showEol, setShowEol] = useState(false);
+  const [hintMode, setHintMode] = useState<HintMode>(loadHintMode);
   const [panelId, setPanelId] = useState<string | null>(null);
   const editor = useRef<EditorHandle | null>(null);
   const mainRef = useRef<HTMLDivElement>(null);
@@ -236,12 +238,17 @@ export function DocView({ doc, active, host, layout, setLayout, setText, files, 
               {t('script.title')}
               <span className="tools">
                 <label><input type="checkbox" checked={softWrap} onChange={(e) => setSoftWrap(e.target.checked)} /> {t('script.wrap')}</label>
-                <label title={t('script.eolTip')}><input type="checkbox" checked={showEol} onChange={(e) => setShowEol(e.target.checked)} /> {t('script.eol')}</label>
+                <label title={t('script.hintTip')}>{t('script.hint')} <select value={hintMode} onChange={(e) => { const m = e.target.value as HintMode; setHintMode(m); saveHintMode(m); }}>
+          <option value="bar">{t('script.hintBar')}</option>
+          <option value="float">{t('script.hintFloat')}</option>
+          <option value="off">{t('script.hintOff')}</option>
+        </select></label>
+        <label title={t('script.eolTip')}><input type="checkbox" checked={showEol} onChange={(e) => setShowEol(e.target.checked)} /> {t('script.eol')}</label>
                 <button title={t('script.splitTip')} onClick={() => setText(wrapScript(text, 100))}>{t('script.split')}</button>
                 <button title={t('script.joinTip')} onClick={() => setText(joinScript(text))}>{t('script.join')}</button>
               </span>
             </h3>
-            <CodeEditor value={text} onChange={setText} errLines={errLines} curLine={curLine} editorRef={editor} wrap={softWrap} eol={showEol} scene={scene} spans={spans} />
+            <CodeEditor value={text} onChange={setText} errLines={errLines} curLine={curLine} editorRef={editor} wrap={softWrap} eol={showEol} hintMode={hintMode} scene={scene} spans={spans} />
             {diagnostics.length > 0 && (
               <div className="diags">
                 {diagnostics.map((d, i) => <div key={i} onClick={() => jump(d.line, d.span)}>line {d.line}: {d.message}</div>)}

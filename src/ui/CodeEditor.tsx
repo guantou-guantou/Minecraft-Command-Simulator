@@ -8,7 +8,7 @@ import { highlightSelectionMatches, search, searchKeymap } from '@codemirror/sea
 import { complete, type Candidate, type Scene } from '../language/complete.ts';
 import { stripComment } from '../language/lines.ts';
 import { toggleComment } from './editing.ts';
-import { hints } from './hints.ts';
+import { hintModeExtension, hints, type HintMode } from './hints.ts';
 import { analyzeDoc, lineSpans, type LineInfo } from './highlight.ts';
 import { useLang } from './I18n.tsx';
 
@@ -29,6 +29,7 @@ interface Props {
   editorRef: RefObject<EditorHandle | null>;
   wrap: boolean;
   eol: boolean;
+  hintMode: HintMode;
   scene: Scene;
   extra?: Extension;
 }
@@ -181,13 +182,14 @@ const ZH_PHRASES: Record<string, string> = {
 
 const TYPE_OF: Record<Candidate['kind'], string> = { command: 'function', keyword: 'keyword', value: 'constant', variable: 'variable', param: 'property' };
 
-export function CodeEditor({ value, onChange, errLines, spans = NO_SPANS, curLine, editorRef, wrap, eol, scene, extra }: Props) {
+export function CodeEditor({ value, onChange, errLines, spans = NO_SPANS, curLine, editorRef, wrap, eol, hintMode, scene, extra }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const live = useRef({ onChange, scene });
   live.current = { onChange, scene };
   const history$ = useRef<Record<string, number>>(loadHistory());
   const wrapC = useRef(new Compartment());
   const langC = useRef(new Compartment());
+  const hintC = useRef(new Compartment());
   const [lang] = useLang();
 
   useEffect(() => {
@@ -277,6 +279,7 @@ export function CodeEditor({ value, onChange, errLines, spans = NO_SPANS, curLin
         highlighter,
         highlightSelectionMatches(),
         hints,
+        hintC.current.of(hintModeExtension(hintMode)),
         search({ top: true }),
         wrapC.current.of(wrap ? EditorView.lineWrapping : []),
         langC.current.of(EditorState.phrases.of(lang === 'zh' ? ZH_PHRASES : {})),
@@ -323,6 +326,10 @@ export function CodeEditor({ value, onChange, errLines, spans = NO_SPANS, curLin
   useEffect(() => {
     editorRef.current?.view?.dispatch({ effects: wrapC.current.reconfigure(wrap ? EditorView.lineWrapping : []) });
   }, [wrap, editorRef]);
+
+  useEffect(() => {
+    editorRef.current?.view?.dispatch({ effects: hintC.current.reconfigure(hintModeExtension(hintMode)) });
+  }, [hintMode, editorRef]);
 
   useEffect(() => {
     editorRef.current?.view?.dispatch({ effects: langC.current.reconfigure(EditorState.phrases.of(lang === 'zh' ? ZH_PHRASES : {})) });

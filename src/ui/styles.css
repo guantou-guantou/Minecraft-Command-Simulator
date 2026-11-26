@@ -130,3 +130,6 @@ tr { vertical-align: top; }
 .nx:not(.pmax) .pgrid { grid-template-columns: 1fr; }
 .pcard { border: 1px solid #333; border-radius: 4px; padding: 4px 6px; min-width: 0; }
 .pcardhead { display: flex; justify-content: space-between; align-items: center; color: #ccc; }
+.cm-hintbar { background: #1f1f1f; border-top: 1px solid #333; min-height: 24px; max-height: 64px; overflow-y: auto; }
+.cm-hintbar .cm-hint { max-width: none; }
+.cm-hint-idle { min-height: 18px; }

@@ -1,5 +1,5 @@
-import { StateField, type Extension } from '@codemirror/state';
-import { EditorView, hoverTooltip, showTooltip, type Tooltip } from '@codemirror/view';
+import { EditorState, Prec, StateEffect, StateField, type Extension } from '@codemirror/state';
+import { EditorView, hoverTooltip, keymap, showPanel, showTooltip, type Panel, type Tooltip } from '@codemirror/view';
 import { explainAt, hintAt, type Hint } from '../language/hint.ts';
 
 function el(tag: string, cls?: string, text?: string): HTMLElement {
@@ -35,20 +35,72 @@ function renderHint(h: Hint): HTMLElement {
   return box;
 }
 
-const signatureField = StateField.define<Tooltip | null>({
+export type HintMode = 'bar' | 'float' | 'off';
+const MODE_KEY = 'mcsim:hintMode';
+
+export function loadHintMode(): HintMode {
+  try {
+    const v = localStorage.getItem(MODE_KEY);
+    return v === 'float' || v === 'off' ? v : 'bar';
+  } catch {
+    return 'bar';
+  }
+}
+
+export function saveHintMode(m: HintMode): void {
+  try {
+    localStorage.setItem(MODE_KEY, m);
+  } catch {
+    /* the setting is only a convenience */
+  }
+}
+
+/** Press Escape to hide the hint until the cursor moves; Ctrl+Shift+Space shows it again. */
+const dismissHint = StateEffect.define<boolean>();
+
+const hintField = StateField.define<Hint | null>({
   create: () => null,
   update(value, tr) {
+    for (const e of tr.effects) {
+      if (e.is(dismissHint)) return e.value ? null : currentHint(tr.state);
+    }
     if (!tr.docChanged && !tr.selection) return value;
-    const sel = tr.state.selection.main;
-    if (!sel.empty) return null;
-    const hint = hintAt(tr.state.doc.toString(), sel.head);
-    if (!hint) return null;
-    const line = tr.state.doc.lineAt(sel.head);
-    return { pos: line.from, above: true, strictSide: true, arrow: false, create: () => ({ dom: renderHint(hint) }) };
+    return currentHint(tr.state);
   },
-  provide: (f) => showTooltip.from(f),
 });
 
+function currentHint(state: EditorState): Hint | null {
+  const sel = state.selection.main;
+  return sel.empty ? hintAt(state.doc.toString(), sel.head) : null;
+}
+
+const floatTooltip = showTooltip.compute([hintField], (state): Tooltip | null => {
+  const hint = state.field(hintField);
+  if (!hint) return null;
+  return { pos: state.doc.lineAt(state.selection.main.head).from, above: true, strictSide: true, arrow: false, create: () => ({ dom: renderHint(hint) }) };
+});
+
+/** A fixed strip under the editor: it never covers code, and its height only changes with the number of usages. */
+const hintBar = showPanel.of((view: EditorView): Panel => {
+  const dom = el('div', 'cm-hintbar');
+  let shown: Hint | null | undefined;
+  const paint = (h: Hint | null) => {
+    if (h === shown) return;
+    shown = h;
+    dom.replaceChildren(h ? renderHint(h) : el('div', 'cm-hint cm-hint-idle', ''));
+  };
+  paint(view.state.field(hintField));
+  return { dom, update: (u) => paint(u.state.field(hintField)) };
+});
+
+export const hintModeExtension = (mode: HintMode): Extension => (mode === 'float' ? floatTooltip : mode === 'bar' ? hintBar : []);
+
+const hintKeys = Prec.low(
+  keymap.of([
+    { key: 'Escape', run: (view) => (view.state.field(hintField) ? (view.dispatch({ effects: dismissHint.of(true) }), true) : false) },
+    { key: 'Ctrl-Shift-Space', run: (view) => (view.dispatch({ effects: dismissHint.of(false) }), true) },
+  ]),
+);
 const hover = hoverTooltip(
   (view, pos) => {
     const line = view.state.doc.lineAt(pos);
@@ -68,4 +120,4 @@ const hover = hoverTooltip(
   { hideOnChange: true },
 );
 
-export const hints: Extension = [signatureField, hover, EditorView.baseTheme({})];
+export const hints: Extension = [hintField, hover, hintKeys, EditorView.baseTheme({})];
