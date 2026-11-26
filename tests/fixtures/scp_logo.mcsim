@@ -1,0 +1,14 @@
+# positions
+p1 = (0,0,0)
+p2 = (1,0,0)
+p3 = (-1,0,0)
+#rotations
+b = (-120,0)
+c = (120,0)
+d = (180,0)
+#entities
+t1 = ent(type=armor_stand,pos=p2,rot=b,name="t")
+t2 = ent(type=armor_stand,pos=p3,rot=c,name="t")
+t3 = ent(type=armor_stand,pos=p1,rot=d,name="d")
+#main command
+/execute positioned 0 0 0 rotated as @e[name=t] positioned ^1^^ positioned 0 0 ~ facing 0 0 0 positioned ^^^-0.134 facing entity @e[name=t] feet positioned 0 0 0 positioned ^^^1 facing entity @e[name=t] feet positioned 0 0 0 positioned ^^^1 facing entity @e[name=t] feet positioned 0 0 0 positioned ^^^1 facing entity @e[name=t] feet positioned 0 0 0 positioned ^^^1 facing entity @e[name=t] feet positioned 0 0 0 positioned ^^^1 facing entity @e[name=t] feet positioned 0 0 0 positioned ^^^4 rotated as @e[name=t] positioned ^115470^^ positioned ~57735~~100000 facing ~ ~ 100000 positioned ^10^^ positioned ~-10~~ facing ~ ~ -2.0 positioned ^^^-1000 facing 0 ~ ~ positioned ^^^4 facing 0 0 -997 positioned ^^^4 facing 0 0 2000 positioned ^^^1000 facing ~ ~ 1000 positioned ^^^999.3 positioned ~16 0 ~-1001.2 positioned ~~~-197995.5 facing 0 0 0 positioned ^^^-1 facing ~ ~ -2.0 positioned ^-5000^^-10000 facing ~ ~ 10003.0 positioned ^5000^^-10000 facing 10000 100 ~ positioned ^^2.7^100 facing ~ ~ 0 positioned ^^^1.25 facing ~ ~ 0 positioned ^^^0.4 facing 5000 ~ ~ positioned ^^^4950 facing 5050 0 19998.35 positioned ^^^-4.7 facing ~ ~ 20007.35 positioned ^^^-1000 facing ~ ~100 21007.35 positioned ^^^100 facing ~ ~ 20000 positioned ^^^949 positioned ~ 0 ~-50 facing ~ ~ 10000 positioned ^^^10006.3 positioned ~ 100 ~ facing 5050 0 10000 positioned ^^^200 facing ~ ~ 0 positioned ^^^9903.3 positioned ~-5050 0 ~-105.2 facing ~ ~ -100 positioned ^-8^^98998 positioned ~-8~~98997.9 as @e[type=armor_stand] rotated as @s positioned ^^^1000 facing 0 0 0 positioned ^^^2000 rotated as @s positioned ^^^1000 facing 0 1000 0 positioned ^^^600 run particle minecraft:balloon_gas_particle ~ 0 ~

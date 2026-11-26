@@ -1,0 +1,41 @@
+import { execute, say, setblock, tag, tp } from './commands.ts';
+import { clear, give, replaceitem } from './inventory-commands.ts';
+import { effect, gamerule, titleraw } from './state-commands.ts';
+import { playanimation, stopsound } from './molang-commands.ts';
+import { clearspawnpoint, daylock, difficulty, playsound, setworldspawn, spawnpoint, tell, testforblocks, time, weather } from './world-state-commands.ts';
+import { enchant, gamemode, inputpermission, kick, list, structure, tickingarea, title, xp } from './player-commands.ts';
+import { Registry } from './registry.ts';
+import { scoreboard } from './scoreboard.ts';
+import { clone, fill, kill, particle, summon, tellraw, testfor, testforblock } from './world-commands.ts';
+
+export function createBuiltinRegistry(): Registry {
+  const r = new Registry();
+  r.register({ name: 'execute', support: 'full', run: execute });
+  r.register({ name: 'say', support: 'full', run: say });
+  r.register({ name: 'tag', support: 'full', run: tag });
+  r.register({ name: 'tp', aliases: ['teleport'], support: 'full', run: tp });
+  r.register({ name: 'setblock', support: 'full', run: setblock });
+  r.register({ name: 'scoreboard', support: 'full', run: (c) => scoreboard(c.tokens, c.ctx, c.env) });
+  r.register({ name: 'summon', support: 'full', run: summon });
+  r.register({ name: 'kill', support: 'full', run: kill });
+  r.register({ name: 'fill', support: 'full', run: fill });
+  r.register({ name: 'clone', support: 'full', run: clone });
+  r.register({ name: 'testfor', support: 'full', run: testfor });
+  r.register({ name: 'testforblock', support: 'full', run: testforblock });
+  r.register({ name: 'tellraw', support: 'full', run: tellraw });
+  r.register({ name: 'give', support: 'full', run: give });
+  r.register({ name: 'clear', support: 'full', run: clear });
+  r.register({ name: 'replaceitem', support: 'full', run: replaceitem });
+  r.register({ name: 'effect', support: 'full', run: effect });
+  r.register({ name: 'gamerule', support: 'full', run: gamerule });
+  r.register({ name: 'titleraw', support: 'record', run: titleraw });
+  r.register({ name: 'playanimation', support: 'full', run: playanimation });
+  for (const [name, run] of Object.entries({ enchant, gamemode, inputpermission, kick, list, tickingarea, title, xp })) r.register({ name, support: 'full', run });
+  r.register({ name: 'structure', support: 'full', run: structure });
+  for (const [name, run] of Object.entries({ time, weather, difficulty, daylock, spawnpoint, setworldspawn, clearspawnpoint, testforblocks })) r.register({ name, support: 'full', run });
+  r.register({ name: 'tell', aliases: ['msg', 'w'], support: 'full', run: tell });
+  r.register({ name: 'playsound', support: 'record', run: playsound });
+  r.register({ name: 'stopsound', support: 'record', run: stopsound });
+  r.register({ name: 'particle', support: 'record', run: particle });
+  return r;
+}

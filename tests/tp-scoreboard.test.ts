@@ -1,0 +1,70 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { parse } from '../src/language/parser.ts';
+import { Simulation } from '../src/engine/simulation.ts';
+import { lintCommands } from '../src/language/cmdlint.ts';
+
+const sim = (src = '') => new Simulation(parse(src));
+const traces = (s: Simulation) => s.events.flatMap((e) => (e.type === 'trace' ? [e.message] : []));
+
+test('tp facing a position or entity, and checkForBlocks', () => {
+  const s = sim('a = ent(type=zombie, position=(0.0, 64, 0.0), name=a)\nent(type=cow, position=(10.0, 64, 0.0), name=cow)\nblock(type=stone, position=(5.0, 64, 5.0))\nblock(type=stone, position=(7.0, 65, 7.0))');
+  const a = () => s.world.entities[0];
+  const run = (c: string) => s.runCommand(c, null, [0, 0, 0]);
+  assert.equal(run('/tp @e[name=a] 0.0 64 0.0 facing 10.0 64 0.0'), true);
+  assert.deepEqual(a().rot, [-90, 0]);
+  assert.equal(run('/tp @e[name=a] 0.0 64 0.0 facing @e[name=cow]'), true);
+  assert.deepEqual(a().rot, [-90, 0]);
+  assert.equal(run('/tp @e[name=a] 0.0 64 0.0 facing 0.0 64 10.0 true'), true);
+  assert.deepEqual(a().rot, [0, 0]);
+  assert.equal(run('/tp @e[name=a] 5 64 5 true'), false);
+  assert.equal(run('/tp @e[name=a] 7 64 7 true'), false);
+  assert.equal(run('/tp @e[name=a] 5 64 5 false'), true);
+  assert.equal(run('/tp @e[name=a] @e[name=cow] true'), true);
+  assert.equal(run('/tp @e[name=a] 1.0 64 1.0 90 0 true'), true);
+  assert.deepEqual([a().pos, a().rot], [[1, 64, 1], [90, 0]]);
+  assert.equal(run('/tp @e[name=a] 1 64 1 maybe'), false);
+  assert.ok(traces(s).some((m) => /destination is blocked/.test(m)));
+  assert.deepEqual(lintCommands('/tp @s 1 2 3 facing 4 5 6 true\n/tp @a @s true'), []);
+  assert.equal(lintCommands('/tp @s 1 2 3 facing').length, 1);
+});
+
+test('scoreboard objectives list/setdisplay, players list/test/random', () => {
+  const s = sim('ent(type=player, position=(0.0, 0, 0.0), name=alice)');
+  const run = (c: string) => s.runCommand(c, null, [0, 0, 0]);
+  assert.equal(run('/scoreboard objectives list'), false);
+  assert.equal(run('/scoreboard objectives add kills dummy Kill Count'), true);
+  assert.equal(run('/scoreboard objectives add t dummy'), true);
+  assert.equal(s.world.objectiveNames.get('kills'), 'Kill Count');
+  assert.equal(run('/scoreboard objectives list'), true);
+  assert.ok(traces(s).some((m) => /2 objectives: \[Kill Count\], t/.test(m)));
+  assert.equal(run('/scoreboard objectives setdisplay sidebar kills ascending'), true);
+  assert.deepEqual(s.world.scoreDisplay.sidebar, { objective: 'kills', order: 'ascending' });
+  assert.equal(run('/scoreboard objectives setdisplay sidebar nope'), false);
+  assert.equal(run('/scoreboard objectives setdisplay sidebar kills sideways'), false);
+  assert.equal(run('/scoreboard objectives setdisplay sidebar'), true);
+  assert.equal(s.world.scoreDisplay.sidebar, undefined);
+  run('/scoreboard objectives setdisplay list t');
+  run('/scoreboard objectives remove t');
+  assert.equal(s.world.scoreDisplay.list, undefined);
+  run('/scoreboard players set alice kills 7');
+  assert.equal(run('/scoreboard players list alice'), true);
+  assert.ok(traces(s).some((m) => /alice \(player\) has 1 tracked objective\(s\): \[kills\]: 7/.test(m)));
+  assert.equal(run('/scoreboard players list'), true);
+  assert.equal(run('/scoreboard players list ghost'), true);
+  assert.equal(run('/scoreboard players test alice kills 5 9'), true);
+  assert.equal(run('/scoreboard players test alice kills * 6'), false);
+  assert.equal(run('/scoreboard players test alice kills 8'), false);
+  assert.equal(run('/scoreboard players test alice kills 7 *'), true);
+  assert.equal(run('/scoreboard players random alice kills 10 20'), true);
+  const v = s.world.scores.get('kills')!.get(`e:${s.world.entities[0].id}`)!;
+  assert.ok(v >= 10 && v <= 20);
+  assert.equal(run('/scoreboard players random alice kills 5 1'), false);
+  const seq = (seed: number) => {
+    const t = sim(`world(seed=${seed})\nent(type=player, position=(0.0, 0, 0.0), name=alice)`);
+    t.runCommand('/scoreboard objectives add r dummy', null, [0, 0, 0]);
+    return Array.from({ length: 8 }, () => (t.runCommand('/scoreboard players random alice r 0 99', null, [0, 0, 0]), t.world.scores.get('r')!.get(`e:${t.world.entities[0].id}`)));
+  };
+  assert.deepEqual(seq(5), seq(5));
+  assert.notDeepEqual(seq(5), seq(6));
+});

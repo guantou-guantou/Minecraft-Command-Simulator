@@ -1,0 +1,5 @@
+# Define the test scene.
+pos1 = (0, 0, 0)
+ent(type=armor_stand, position=pos1, name=a)   # entity declaration
+
+/execute as @e[name=a] at @s run say aaa       # command part
