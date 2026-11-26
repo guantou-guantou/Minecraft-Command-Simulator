@@ -1,3 +1,4 @@
+import { EFFECT_IDS } from '../language/ids.generated.ts';
 import { syntax, trace } from './args.ts';
 import { GAMERULE_DEFAULTS, isIntRule } from './gamerules.ts';
 import { parseJson, renderRawtext } from './rawtext.ts';
@@ -7,7 +8,7 @@ import { CommandError, label, type Env } from './types.ts';
 
 const failed = (m: string) => new CommandError('failed', m);
 
-export const EFFECTS = new Set([
+export const EFFECTS = new Set([...EFFECT_IDS,
   'wither', 'speed', 'slowness', 'haste', 'mining_fatigue', 'strength', 'instant_health', 'instant_damage', 'jump_boost',
   'nausea', 'regeneration', 'resistance', 'fire_resistance', 'water_breathing', 'invisibility', 'blindness', 'night_vision',
   'hunger', 'weakness', 'poison', 'health_boost', 'absorption', 'saturation', 'levitation', 'fatal_poison', 'conduit_power',

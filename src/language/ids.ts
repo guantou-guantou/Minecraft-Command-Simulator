@@ -1,5 +1,7 @@
+import { BLOCK_IDS, ENTITY_IDS, ITEM_IDS } from './ids.generated.ts';
+
 /** Entity ids from the Bedrock command reference (the minecraft: prefix may be left out). */
-export const ENTITY_TYPES: string[] = ['slime', 'tnt', 'camel', 'turtle', 'chicken', 'bee', 'axolotl', 'pig', 'hoglin', 'sniffer', 'cat', 'cow', 'sheep', 'armadillo', 'wolf', 'villager', 'wandering_trader', 'mooshroom', 'squid', 'glow_squid', 'strider', 'rabbit', 'happy_ghast', 'bat', 'iron_golem', 'nautilus', 'snow_golem', 'zombie_nautilus', 'ocelot', 'horse', 'trader_llama', 'llama', 'polar_bear', 'parrot', 'dolphin', 'panda', 'fox', 'goat', 'frog', 'tadpole', 'allay', 'tropicalfish', 'cod', 'zombie_villager', 'pufferfish', 'salmon', 'donkey', 'mule', 'skeleton_horse', 'zombie_horse', 'zombie', 'drowned', 'creeper', 'skeleton', 'spider', 'zombie_pigman', 'enderman', 'silverfish', 'cave_spider', 'ghast', 'magma_cube', 'blaze', 'warden', 'witch', 'stray', 'husk', 'wither_skeleton', 'guardian', 'elder_guardian', 'elder_guardian_ghost', 'wither', 'ender_dragon', 'shulker', 'endermite', 'vindicator', 'evocation_illager', 'vex', 'phantom', 'pillager', 'ravager', 'piglin_brute', 'piglin', 'zoglin', 'breeze', 'bogged', 'creaking', 'copper_golem', 'parched', 'camel_husk', 'sulfur_cube', 'minecart', 'hopper_minecart', 'tnt_minecart', 'chest_minecart', 'command_block_minecart', 'xp_bottle', 'xp_orb', 'ender_crystal', 'arrow', 'snowball', 'egg', 'splash_potion', 'leash_knot', 'wind_charge_projectile', 'boat', 'chest_boat', 'lightning_bolt', 'evocation_fang', 'armor_stand', 'fireworks_rocket', 'npc'];
+const HAND_ENTITIES: string[] = ['slime', 'tnt', 'camel', 'turtle', 'chicken', 'bee', 'axolotl', 'pig', 'hoglin', 'sniffer', 'cat', 'cow', 'sheep', 'armadillo', 'wolf', 'villager', 'wandering_trader', 'mooshroom', 'squid', 'glow_squid', 'strider', 'rabbit', 'happy_ghast', 'bat', 'iron_golem', 'nautilus', 'snow_golem', 'zombie_nautilus', 'ocelot', 'horse', 'trader_llama', 'llama', 'polar_bear', 'parrot', 'dolphin', 'panda', 'fox', 'goat', 'frog', 'tadpole', 'allay', 'tropicalfish', 'cod', 'zombie_villager', 'pufferfish', 'salmon', 'donkey', 'mule', 'skeleton_horse', 'zombie_horse', 'zombie', 'drowned', 'creeper', 'skeleton', 'spider', 'zombie_pigman', 'enderman', 'silverfish', 'cave_spider', 'ghast', 'magma_cube', 'blaze', 'warden', 'witch', 'stray', 'husk', 'wither_skeleton', 'guardian', 'elder_guardian', 'elder_guardian_ghost', 'wither', 'ender_dragon', 'shulker', 'endermite', 'vindicator', 'evocation_illager', 'vex', 'phantom', 'pillager', 'ravager', 'piglin_brute', 'piglin', 'zoglin', 'breeze', 'bogged', 'creaking', 'copper_golem', 'parched', 'camel_husk', 'sulfur_cube', 'minecart', 'hopper_minecart', 'tnt_minecart', 'chest_minecart', 'command_block_minecart', 'xp_bottle', 'xp_orb', 'ender_crystal', 'arrow', 'snowball', 'egg', 'splash_potion', 'leash_knot', 'wind_charge_projectile', 'boat', 'chest_boat', 'lightning_bolt', 'evocation_fang', 'armor_stand', 'fireworks_rocket', 'npc'];
 
 /** A starter list for completion only; ids that appear in the script are suggested as well. */
 /** Real entity ids that the reference list above leaves out (projectiles, items and other things that are not mobs). */
@@ -11,7 +13,7 @@ export const EXTRA_ENTITY_TYPES: string[] = [
   'wind_charge_projectile', 'breeze_wind_charge_projectile', 'npc', 'agent', 'ice_bomb', 'balloon', 'tripod_camera', 'armor_stand',
 ];
 
-export const COMMON_BLOCKS: string[] = [
+const HAND_BLOCKS: string[] = [
   'air', 'stone', 'dirt', 'grass_block', 'cobblestone', 'oak_planks', 'sand', 'gravel', 'gold_block', 'iron_block', 'diamond_block',
   'emerald_block', 'redstone_block', 'glass', 'obsidian', 'bedrock', 'water', 'lava', 'chest', 'trapped_chest', 'barrel', 'hopper',
   'dispenser', 'dropper', 'lever', 'stone_button', 'redstone_lamp', 'redstone_wire', 'repeater', 'comparator', 'observer', 'piston',
@@ -20,7 +22,7 @@ export const COMMON_BLOCKS: string[] = [
   'shulker_box', 'ender_chest', 'furnace', 'crafting_table', 'bookshelf', 'ice', 'snow', 'clay', 'concrete', 'terracotta',
 ];
 
-export const COMMON_ITEMS: string[] = [
+const HAND_ITEMS: string[] = [
   'diamond', 'iron_ingot', 'gold_ingot', 'emerald', 'apple', 'golden_apple', 'bread', 'cooked_beef', 'stick', 'coal', 'redstone',
   'diamond_sword', 'iron_sword', 'diamond_pickaxe', 'iron_pickaxe', 'diamond_axe', 'diamond_shovel', 'bow', 'arrow', 'shield',
   'diamond_helmet', 'diamond_chestplate', 'diamond_leggings', 'diamond_boots', 'ender_pearl', 'snowball', 'egg', 'bucket',
@@ -35,3 +37,10 @@ export const PARTICLES: string[] = [
 export const GAME_MODES = ['survival', 'creative', 'adventure', 'spectator', 'default', 's', 'c', 'a', 'd'];
 export const STRUCTURE_ROTATIONS = ['0_degrees', '90_degrees', '180_degrees', '270_degrees'];
 export const STRUCTURE_MIRRORS = ['none', 'x', 'z', 'xz'];
+
+const merged = (starter: string[], all: string[]) => [...new Set([...starter.filter((x) => all.includes(x)), ...all])];
+
+/** Ids offered by completion: the common ones first, then everything the game knows (the full lists are generated from Mojang's data, see ids.generated.ts). */
+export const ENTITY_TYPES: string[] = [...new Set([...HAND_ENTITIES, ...ENTITY_IDS.filter((id) => id !== 'player')])];
+export const COMMON_BLOCKS: string[] = merged(HAND_BLOCKS, BLOCK_IDS);
+export const COMMON_ITEMS: string[] = merged(HAND_ITEMS, ITEM_IDS);

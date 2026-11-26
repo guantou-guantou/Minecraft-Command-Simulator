@@ -8,6 +8,7 @@
 
 - 命令行子命令:`check`(只检查不运行,输出与编辑器一致的诊断,带行号和列号)、`run`(可多条链、`--all`、`--command`、`--state`)、`test`、`export`。都支持 `--json`,脚本可从标准输入读取(文件名写 `-`),退出码固定为 0、1、2。旧写法仍然可用。
 - `npm run cli:build` 生成单文件 `dist-cli/mcsim.mjs`,只需要 Node 即可运行。
+- 补全里的实体、方块、物品 id 改为从 Mojang 官方的 `@minecraft/vanilla-data`(1.26.60,MIT)生成:实体 131 个、方块 1466 个、物品 1627 个,效果和附魔也用同一份数据核对。`npm run ids:gen` 可以重新生成;不存在的方块名(如旧写法 `concrete`)不再被建议。
 - 测试守住核心边界:解析器、引擎、NBT、BDX、转换器不允许依赖界面、React、Electron 或浏览器全局对象。
 
 ## 0.2.1(2026-11-26)
