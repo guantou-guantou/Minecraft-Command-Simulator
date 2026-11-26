@@ -60,16 +60,19 @@ PowerShell 中如果 `npm` 被执行策略拦截，请改用 `npm.cmd`。
 | `npm run desktop:dir` | 构建免安装目录到 `release/win-unpacked` |
 | `npm run desktop:dist` | 打包安装版和便携版到 `release/` |
 | `npm run demo` | 用命令行运行示例脚本 |
+| `npm run cli:build` | 生成单文件命令行工具 `dist-cli/mcsim.mjs` |
 
-命令行运行脚本：
+命令行(适合自动化和让 AI agent 使用,文件名写 `-` 表示从标准输入读脚本):
 
 ```bash
-node src/cli.ts examples/demo.mcsim [chain] [--ticks N] [--export commands|manifest]
-node src/cli.ts file.mcsim --test            # 运行脚本里的 test 块
-node src/cli.ts file.mcsim --test --only a,b # 只运行指定名称的测试
+node src/cli.ts check  file.mcsim [--json]    # 只检查不运行,输出和编辑器一致的诊断
+node src/cli.ts run    file.mcsim [chain...] [--all] [--ticks N] [--command "/cmd"] [--state] [--json]
+node src/cli.ts test   file.mcsim [--only a,b] [--json]
+node src/cli.ts export file.mcsim [chain...] [--all] [--format commands|manifest]
+npm run cli:build                             # 生成单文件 dist-cli/mcsim.mjs,只需要 Node 就能运行
 ```
 
-退出码:脚本有语法诊断、运行时有指令报错、或有测试失败时为 1;参数用法错误为 2;否则为 0。测试里的 `/指令` 步骤执行失败也算测试失败。
+退出码:0 一切正常;1 有诊断、指令报错或测试失败;2 用法错误或找不到文件。测试里的 `/指令` 步骤执行失败也算测试失败。旧的 `node src/cli.ts file.mcsim [chain] [--ticks N] [--test]` 写法仍然可用。详见语法教学第 11 章。
 
 ## 目录结构
 

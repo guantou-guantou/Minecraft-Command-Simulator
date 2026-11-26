@@ -9,7 +9,8 @@ Offline simulator for Minecraft Bedrock (NetEase) commands. TypeScript engine, R
 - `npm run desktop` builds the UI and starts the Electron app.
 - `npm run desktop:dir` builds the unpacked app into `release/win-unpacked`.
 - `npm run desktop:dist` builds the installer and the portable exe into `release/`.
-- `node src/cli.ts examples/demo.mcsim [chain] [--ticks N] [--export commands|manifest]` runs the engine without a UI.
+- `node src/cli.ts check|run|test|export <file|-> ... [--json]` is the command line tool (see docs chapter 11); `npm run cli:build` bundles it into `dist-cli/mcsim.mjs`. The old form `node src/cli.ts examples/demo.mcsim [chain] [--ticks N] [--export commands|manifest]` still works. `check` reports the same diagnostics as the editor; exit codes: 0 fine, 1 diagnostics/command errors/failed tests, 2 usage errors.
+- Core modules (`src/language`, `src/engine`, `src/nbt`, `src/bdx`, `src/convert`, `src/export.ts`) must stay free of UI, React, Electron and browser globals (`tests/core-boundary.test.ts` enforces it).
 - `node src/cli.ts file.mcsim --test` runs the `test` blocks of a script (exit 1 on failure).
 - Electron smoke test: set `MC_SIM_SMOKE=1` and start the app; it prints `SMOKE_RESULT ...` and exits 0 when the UI loaded.
 

@@ -1,9 +1,153 @@
 import { readFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
 import { parse } from './language/parser.ts';
+import { lintCommands } from './language/cmdlint.ts';
+import type { Diagnostic } from './language/types.ts';
 import { Simulation } from './engine/simulation.ts';
-import { exportCommands, exportManifest } from './export.ts';
+import { lintProgram } from './engine/lint.ts';
+import { snapshot } from './engine/snapshot.ts';
+import type { SimEvent } from './engine/types.ts';
+import { exportAllCommands, exportAllManifest, exportCommands, exportManifest } from './export.ts';
 import { runTests } from './engine/testrun.ts';
+
+const USAGE = `mcsim: offline Minecraft Bedrock command simulator
+
+Usage:
+  mcsim check  <file|-> [--json]
+  mcsim run    <file|-> [chain...] [--chain name]... [--all] [--ticks N] [--command "/cmd"]... [--state] [--json]
+  mcsim test   <file|-> [--only a,b] [--json]
+  mcsim export <file|-> [chain...] [--chain name]... [--format commands|manifest]
+
+  <file|-> is a .mcsim file, or - to read the script from standard input.
+  Exit codes: 0 everything fine, 1 diagnostics / command errors / failed tests, 2 usage or file errors.
+
+Legacy form (still supported):
+  node src/cli.ts <file.mcsim> [chain] [--ticks N] [--export commands|manifest] | --test [--only a,b]`;
+
+const SUBCOMMANDS = new Set(['check', 'run', 'test', 'export']);
+
+function fail(message: string, code = 2): never {
+  console.error(message);
+  process.exit(code);
+}
+
+function readSource(path: string | undefined): { text: string; label: string } {
+  if (!path) fail(USAGE);
+  try {
+    return path === '-' ? { text: readFileSync(0, 'utf8'), label: '<stdin>' } : { text: readFileSync(path, 'utf8'), label: path };
+  } catch (e) {
+    return fail(`Cannot read ${path}: ${(e as Error).message}`);
+  }
+}
+
+const eventsOf = (events: SimEvent[]) => events.filter((e) => e.type === 'chat' && e.kind === 'error').length;
+
+function printEvent(e: SimEvent): void {
+  const t = `t${e.tick}`;
+  if (e.type === 'chat') console.log(`${t} [chat/${e.kind}] ${e.sender ? `<${e.sender}> ` : ''}${e.text}`);
+  else if (e.type === 'trace') console.log(`${t}   line ${e.line}${e.branch ? ` [${e.branch}]` : ''}: ${e.message}${e.status ? ` (${e.status})` : ''}`);
+  else if (e.type === 'change') console.log(`${t}   line ${e.line}: ${e.target}: ${e.what}`);
+  else if (e.type === 'screen') console.log(`${t} [screen/${e.slot}] -> ${e.to}: ${e.text}`);
+  else console.log(`${t}   line ${e.line}: particle ${e.id} at (${e.pos.join(', ')})`);
+}
+
+/** Every problem the editor would underline: parse errors, declaration checks and command syntax. */
+function diagnose(text: string): { program: ReturnType<typeof parse>; all: (Diagnostic & { column?: number })[] } {
+  const program = parse(text);
+  const all = [...program.diagnostics, ...lintProgram(program), ...lintCommands(text)]
+    .sort((a, b) => a.line - b.line)
+    .map((d) => ({ ...d, ...(d.span ? { column: d.span.from - (text.lastIndexOf('\n', d.span.from - 1) + 1) + 1 } : {}) }));
+  return { program, all };
+}
+
+const printDiagnostics = (label: string, ds: (Diagnostic & { column?: number })[]) =>
+  ds.forEach((d) => console.error(`${label}:${d.line}${d.column ? `:${d.column}` : ''}: ${d.message}`));
+
+const json = (value: unknown) => console.log(JSON.stringify(value, null, 2));
+
+function subcommand(name: string, argv: string[]): never {
+  const { values, positionals } = parseArgs({
+    args: argv,
+    allowPositionals: true,
+    options: {
+      json: { type: 'boolean' }, ticks: { type: 'string' }, chain: { type: 'string', multiple: true }, all: { type: 'boolean' },
+      command: { type: 'string', multiple: true }, state: { type: 'boolean' }, only: { type: 'string' }, format: { type: 'string' },
+    },
+  });
+  const { text, label } = readSource(positionals[0]);
+  const named = [...positionals.slice(1), ...(values.chain ?? [])];
+
+  if (name === 'check') {
+    const { all } = diagnose(text);
+    if (values.json) json({ ok: all.length === 0, diagnostics: all });
+    else printDiagnostics(label, all);
+    process.exit(all.length ? 1 : 0);
+  }
+
+  const { program, all } = diagnose(text);
+  if (program.diagnostics.length) {
+    if (values.json) json({ ok: false, diagnostics: all });
+    else printDiagnostics(label, program.diagnostics);
+    process.exit(1);
+  }
+  const pick = (): typeof program.chains => {
+    if (values.all) return program.chains;
+    if (!named.length) return program.chains.slice(0, 1);
+    return named.map((n) => program.chains.find((c) => c.name === n) ?? fail(`No such chain: ${n}`));
+  };
+
+  if (name === 'test') {
+    const only = values.only ? new Set(values.only.split(',').map((n) => n.trim())) : undefined;
+    const unknown = [...(only ?? [])].filter((n) => !program.tests.some((t) => t.name === n));
+    if (unknown.length) fail(`No such test: ${unknown.join(', ')}`);
+    const results = runTests(program, undefined, only);
+    const failed = results.filter((r) => !r.passed).length;
+    if (values.json) json({ ok: failed === 0, total: results.length, passed: results.length - failed, failed, tests: results });
+    else {
+      for (const r of results) {
+        console.log(`${r.passed ? 'PASS' : 'FAIL'} ${r.name} (${r.checks} checks)`);
+        for (const f of r.failures) console.log(`  line ${f.line}: ${f.message}`);
+      }
+      console.log(results.length ? `${results.length - failed}/${results.length} tests passed` : 'no tests');
+    }
+    process.exit(failed ? 1 : 0);
+  }
+
+  if (name === 'export') {
+    const chains = pick();
+    if (!chains.length) fail('No such chain');
+    const format = values.format ?? 'commands';
+    if (format !== 'commands' && format !== 'manifest') fail('--format must be commands or manifest');
+    process.stdout.write(format === 'commands' ? exportAllCommands(chains) : exportAllManifest(chains));
+    process.exit(0);
+  }
+
+  const chains = pick();
+  if (!chains.length && !values.command?.length) fail('No such chain');
+  const ticks = values.ticks === undefined ? 0 : Number(values.ticks);
+  if (!Number.isInteger(ticks) || ticks < 0) fail('--ticks must be a whole number of at least 0');
+  const sim = new Simulation(program);
+  if (values.ticks !== undefined) {
+    for (const c of chains) sim.activate(c.name);
+    sim.advance(ticks);
+  } else for (const c of chains) sim.runChain(c.name);
+  for (const c of values.command ?? []) sim.runCommand(c, null, [0, 0, 0]);
+  const errors = eventsOf(sim.events);
+  if (values.json) json({ ok: errors === 0, errors, ticks, diagnostics: all, events: sim.events, ...(values.state ? { world: snapshot(sim) } : {}) });
+  else {
+    sim.events.forEach(printEvent);
+    if (values.state) console.log(JSON.stringify(snapshot(sim), null, 2));
+    if (errors) console.error(`${errors} command error(s)`);
+  }
+  process.exit(errors ? 1 : 0);
+}
+
+const [first, ...rest] = process.argv.slice(2);
+if (first === '--help' || first === '-h' || first === 'help') {
+  console.log(USAGE);
+  process.exit(0);
+}
+if (first && SUBCOMMANDS.has(first)) subcommand(first, rest);
 
 const { values, positionals } = parseArgs({
   allowPositionals: true,
@@ -11,7 +155,7 @@ const { values, positionals } = parseArgs({
 });
 const [file, chainName] = positionals;
 if (!file) {
-  console.error('Usage: node src/cli.ts <file.mcsim> [chain] [--ticks N] [--export commands|manifest] | --test [--only name1,name2]');
+  console.error(USAGE);
   process.exit(2);
 }
 
@@ -20,10 +164,10 @@ for (const d of program.diagnostics) console.error(`line ${d.line}: ${d.message}
 if (program.diagnostics.length) process.exit(1);
 
 if (values.test) {
-  const only = values.only ? new Set(values.only.split(",").map((n) => n.trim())) : undefined;
+  const only = values.only ? new Set(values.only.split(',').map((n) => n.trim())) : undefined;
   const unknown = [...(only ?? [])].filter((n) => !program.tests.some((t) => t.name === n));
   if (unknown.length) {
-    console.error(`No such test: ${unknown.join(", ")}`);
+    console.error(`No such test: ${unknown.join(', ')}`);
     process.exit(2);
   }
   const results = runTests(program, undefined, only);
@@ -58,15 +202,8 @@ if (values.ticks) {
 } else {
   sim.runChain(chain.name);
 }
-for (const e of sim.events) {
-  const t = `t${e.tick}`;
-  if (e.type === 'chat') console.log(`${t} [chat/${e.kind}] ${e.sender ? `<${e.sender}> ` : ''}${e.text}`);
-  else if (e.type === 'trace') console.log(`${t}   line ${e.line}${e.branch ? ` [${e.branch}]` : ''}: ${e.message}${e.status ? ` (${e.status})` : ''}`);
-  else if (e.type === 'change') console.log(`${t}   line ${e.line}: ${e.target}: ${e.what}`);
-  else if (e.type === 'screen') console.log(`${t} [screen/${e.slot}] -> ${e.to}: ${e.text}`);
-  else console.log(`${t}   line ${e.line}: particle ${e.id} at (${e.pos.join(', ')})`);
-}
-const errors = sim.events.filter((e) => e.type === 'chat' && e.kind === 'error').length;
+sim.events.forEach(printEvent);
+const errors = eventsOf(sim.events);
 if (errors) {
   console.error(`${errors} command error(s)`);
   process.exit(1);
