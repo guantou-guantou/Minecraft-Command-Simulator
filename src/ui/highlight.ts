@@ -63,7 +63,7 @@ export function analyzeDoc(doc: string): LineInfo[] {
     const code = stripComment(first).trim();
     const indented = /^\s/.test(first);
     let kind: Kind = lineKind(first);
-    if (!indented && /^test\s+\S+\s*:$/.test(code)) {
+    if (!indented && /^(test|function)\s+\S+\s*:$/.test(code)) {
       kind = 'testhead';
       inTest = true;
     } else if (inTest && indented && code !== '' && kind !== 'cmd') kind = 'testline';

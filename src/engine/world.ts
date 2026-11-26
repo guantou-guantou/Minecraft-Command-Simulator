@@ -30,6 +30,8 @@ export class World {
   gamerules: Record<string, GameRuleValue> = { ...GAMERULE_DEFAULTS };
   region: Region;
   tickingAreas: TickingArea[] = [];
+  /** Functions waiting for schedule on_area_loaded. */
+  scheduled: { tick: number; fn: string; pos: Vec3; line: number }[] = [];
   /** Which objective each scoreboard display slot shows. */
   scoreDisplay: Record<string, { objective: string; order: string } | undefined> = {};
   /** Display names of objectives (the optional last argument of `objectives add`). */

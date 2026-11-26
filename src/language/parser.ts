@@ -14,6 +14,7 @@ import {
 } from './types.ts';
 import { parseSnbt } from '../nbt/snbt.ts';
 import { logicalLines, stripComment } from './lines.ts';
+import { extractFunctions } from './functions.ts';
 import { extractTests } from './testdsl.ts';
 import { TIME_NAMES } from '../engine/clock.ts';
 import { MAX_ITEM_COUNT, containerProblem, entitySlotKey, maxStack, slotKey, slotProblem, type Item } from './items.ts';
@@ -252,11 +253,12 @@ function validateLayout(prog: Program, diag: (line: number, message: string) => 
 }
 
 export function parse(input: string): Program {
-  const extracted = extractTests(input);
+  const fx = extractFunctions(input);
+  const extracted = extractTests(fx.source);
   const source = extracted.source;
   const scope: Scope = { vars: new Map(), texts: new Map(), rots: new Map(), handles: new Set() };
   const { vars, rots, handles } = scope;
-  const prog: Program = { entities: [], blocks: [], fills: [], items: [], region: null, world: null, chains: [], diagnostics: [...extracted.diagnostics], tests: extracted.tests };
+  const prog: Program = { entities: [], blocks: [], fills: [], items: [], region: null, world: null, chains: [], diagnostics: [...fx.diagnostics, ...extracted.diagnostics], tests: extracted.tests, functions: fx.functions };
   const itemSlots = new Map<string, number>();
   let current: Chain | null = null;
   /** The last chain ...: header; indented commands belong to it. */

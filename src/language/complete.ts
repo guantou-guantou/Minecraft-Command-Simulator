@@ -26,6 +26,8 @@ export interface Scene {
   tags: string[];
   objectives: string[];
   chains: string[];
+  /** Names of the unction name: blocks of the script. */
+  functions: string[];
   /** Structure names known to the script or the structure library, without the default namespace. */
   structures: string[];
   entities: string[];
@@ -58,6 +60,7 @@ export function sceneFrom(text: string, program: Program, structures: string[] =
     tags: uniq([...program.entities.flatMap((e) => e.tags), ...all(/\btag\s+\S+\s+add\s+([\w:.-]+)/g), ...all(/\btag=([\w:.-]+)/g)]),
     objectives: uniq(all(/scoreboard\s+objectives\s+add\s+([\w.-]+)/g)),
     chains: program.chains.map((c) => c.name),
+  functions: program.functions.map((f) => f.name),
     structures: uniq([...structures, ...all(/\bstructure\s+save\s+(\S+)/g)].map(shortStructureName)),
     entities: uniq(program.entities.map((e) => strip(e.type))),
     blocks: uniq(program.blocks.map((b) => strip(b.type))),
@@ -178,6 +181,7 @@ function leafCandidates(leaf: Leaf, scene: Scene): Candidate[] {
       return scene.objectives.map((v) => c(v, 'value', 'objective in this script'));
     case 'word':
       if (leaf.name === 'chain') return scene.chains.map((v) => c(v, 'value', 'chain in this script'));
+      if (leaf.name === 'function') return scene.functions.map((v) => c(v, 'value', 'function in this script'));
       if (leaf.name === 'structure') return scene.structures.map((v) => c(v, 'value', 'structure'));
       return leaf.name === 'slot' ? SLOT_NAMES().map((v) => c(v, 'value', 'slot')) : [];
     case 'bool':

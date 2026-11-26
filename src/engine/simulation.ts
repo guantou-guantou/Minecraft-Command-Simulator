@@ -1,4 +1,4 @@
-import { DIRS, DIR_ID, DIR_VEC, type Chain, type ChainNode, type Dir, type Program, type Vec3 } from '../language/types.ts';
+import { DIRS, DIR_ID, DIR_VEC, type Chain, type ChainNode, type Dir, type FunctionDecl, type Program, type Vec3 } from '../language/types.ts';
 import type { StructureTemplate } from './structure.ts';
 import { createBuiltinRegistry } from './builtins.ts';
 import { tickAnimations } from './molang-commands.ts';
@@ -52,10 +52,12 @@ export class Simulation {
   private states = new Map<string, ChainState>();
   private blockRt = new Map<string, BlockRuntime>();
   private queue: Job[] = [];
+  private functions: Map<string, FunctionDecl>;
 
   constructor(program: Program) {
     this.program = program;
     this.world = buildWorld(program);
+    this.functions = new Map(program.functions.map((f) => [f.name, f]));
     this.initChains();
   }
 
@@ -115,7 +117,7 @@ export class Simulation {
       }
       this.emit(e);
     };
-    const env = { world: this.world, library: this.library, commands: this.commands, tick: this.tick, line, emit };
+    const env = { world: this.world, library: this.library, commands: this.commands, functions: this.functions, tick: this.tick, line, emit };
     try {
       const ok = executeCommand(src, { executor, pos, rot, anchor: 'feet' as const }, env) > 0;
       if (dropped) {
@@ -219,8 +221,16 @@ export class Simulation {
       this.tickEffects();
       tickAnimations(this.world.entities, this.tick + 1, this.emit, this.quiet);
       this.processTick();
+      this.runScheduled();
       this.tick++;
     }
+  }
+
+  private runScheduled(): void {
+    const due = this.world.scheduled.filter((s) => s.tick <= this.tick);
+    if (!due.length) return;
+    this.world.scheduled = this.world.scheduled.filter((s) => s.tick > this.tick);
+    for (const s of due) this.runCommand(`/function ${s.fn}`, null, s.pos, s.line);
   }
 
   private tickEffects(): void {

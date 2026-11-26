@@ -134,9 +134,17 @@ export interface WorldDecl {
   seed?: number;
 }
 
+/** A unction name: block: commands run one after the other by /function name. */
+export interface FunctionDecl {
+  name: string;
+  line: number;
+  commands: { line: number; text: string }[];
+}
+
 export interface Program {
   world: WorldDecl | null;
   tests: TestCase[];
+  functions: FunctionDecl[];
   entities: EntityDecl[];
   blocks: BlockDecl[];
   fills: FillDecl[];

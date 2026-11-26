@@ -94,6 +94,11 @@ export interface Env {
   /** Structures kept on disk (the project's structure library): they survive a reset. */
   library: Map<string, import('./structure.ts').StructureTemplate>;
   commands: import('./registry.ts').Registry;
+  /** The unction name: blocks of the script. */
+  functions: Map<string, import('../language/types.ts').FunctionDecl>;
+  /** How deep function calls are nested, and how many commands the running function calls may still run. */
+  fnDepth?: number;
+  fnBudget?: { left: number };
   emit: (e: SimEvent) => void;
   line: number;
   tick: number;

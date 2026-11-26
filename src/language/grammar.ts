@@ -196,6 +196,11 @@ COMMANDS.toggledownfall = () => S(L('toggledownfall'));
 COMMANDS.me = () => S(L('me'), R('message'));
 COMMANDS.querytarget = () => S(L('querytarget'), target());
 COMMANDS.spreadplayers = () => S(L('spreadplayers'), V('coord', 'x'), V('coord', 'z'), V('float', 'spread distance'), V('float', 'max range'), target('victim'));
+COMMANDS.function = () => S(L('function'), V('word', 'function'));
+COMMANDS.schedule = () => S(
+    L('schedule'), L('on_area_loaded'), L('add'),
+    A(S(L('circle'), pos('center'), V('float', 'radius'), V('word', 'function')), S(L('tickingarea'), V('word', 'name'), V('word', 'function')), S(pos('from'), pos('to'), V('word', 'function'))),
+  );
 COMMANDS.camera = () => S(
     L('camera'), target('players'),
     A(L('clear'), L('fov_clear'), S(L('fade'), O(R('options'))), S(L('set'), V('word', 'preset'), O(R('options'))), S(L('target'), R('options')), S(L('fov_set'), V('float', 'fov'), O(R('options')))),
@@ -238,10 +243,6 @@ export const SYNTAX_ONLY: Record<string, () => G> = {
       S(KW('what', ['feature', 'featurerule', 'structure']), V('word', 'name'), O(pos('position'))),
       S(L('jigsaw'), V('word', 'pool'), V('word', 'target'), int('max depth'), O(R('options'))),
     ),
-  ),
-  schedule: () => S(
-    L('schedule'), L('on_area_loaded'), L('add'),
-    A(S(L('circle'), pos('center'), V('float', 'radius'), V('word', 'function')), S(L('tickingarea'), V('word', 'name'), V('word', 'function')), S(pos('from'), pos('to'), V('word', 'function'))),
   ),
 };
 
