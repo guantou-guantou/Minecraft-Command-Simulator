@@ -179,7 +179,7 @@ export class Simulation {
     const st = this.states.get(name)!;
     if (entry.cb.mode === 'rep' && st.powered) return;
     st.powered = true;
-    this.queue.push({ tick: this.tick + (entry.cb.mode === 'rep' && entry.cb.firstTick ? 0 : entry.cb.delay), chain, idx: 0 });
+    this.enqueueOnce({ tick: this.tick + (entry.cb.mode === 'rep' && entry.cb.firstTick ? 0 : entry.cb.delay), chain, idx: 0 });
   }
 
   /** Powers the command block at a world position (and optionally more blocks) and triggers it. */
@@ -193,7 +193,14 @@ export class Simulation {
     if (mode === 'rep' && this.rt(pos).powered) return;
     this.rt(pos).powered = true;
     for (const p of alsoPower) this.rt(p).powered = true;
-    this.queue.push({ tick: this.tick + (mode === 'rep' && cbOf(data).firstTick ? 0 : cbOf(data).delay), pos });
+    this.enqueueOnce({ tick: this.tick + (mode === 'rep' && cbOf(data).firstTick ? 0 : cbOf(data).delay), pos });
+  }
+
+  /** A block that is triggered twice in the same tick (for example by initChains and an explicit activate) still runs once. */
+  private enqueueOnce(job: Job): void {
+    const same = (j: Job) =>
+      j.tick === job.tick && ('pos' in j && 'pos' in job ? key(j.pos) === key(job.pos) : 'chain' in j && 'chain' in job && j.chain === job.chain && j.idx === job.idx);
+    if (!this.queue.some(same)) this.queue.push(job);
   }
 
   deactivateAt(pos: Vec3): void {

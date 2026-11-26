@@ -1,4 +1,5 @@
 import { normalizeId, unquote, type Token } from '../language/parser.ts';
+import { ENTITY_TYPES, EXTRA_ENTITY_TYPES } from '../language/ids.ts';
 import type { Vec3 } from '../language/types.ts';
 import {
   box, checkVolume, floorVec, fmt, isCoordToken, lookRot, matchBlock, readAngle, readBlock, readCoords, sameBlock, syntax, trace,
@@ -22,11 +23,14 @@ function checkBox(env: Env, min: Vec3, max: Vec3): void {
   for (const p of [min, max]) if (!env.world.inRegion(p)) throw failed(`(${p.join(', ')}) is outside the simulated region`);
 }
 
+const KNOWN_ENTITIES = new Set([...ENTITY_TYPES, ...EXTRA_ENTITY_TYPES].map((id) => id.replace(/^minecraft:/, '')));
+
 export function summon({ tokens, ctx, env }: Cmd): number {
   const typeTok = tokens[1];
   if (!typeTok) throw syntax('Usage: summon <entityType> [spawnPos] [yRot] [xRot] [event] [nameTag]');
   const type = normalizeId(typeTok.text);
   if (type === 'minecraft:player') throw failed('A player cannot be summoned');
+  if (type.startsWith('minecraft:') && !KNOWN_ENTITIES.has(type.slice(10))) throw failed(`Unknown entity type \"${type.slice(10)}\"`);
   let pos: Vec3 = [...ctx.pos];
   let rot: [number, number] = [0, 0];
   let name: string | null = null;

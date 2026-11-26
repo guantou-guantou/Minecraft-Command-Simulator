@@ -75,9 +75,15 @@ export function runTest(program: Program, t: TestCase, makeSim: (p: Program) => 
       case 'tick':
         sim.advance(s.n);
         break;
-      case 'command':
-        sim.runCommand(`/${s.text}`, null, [0, 0, 0], s.line);
+      case 'command': {
+        const before = sim.events.length;
+        if (!sim.runCommand(`/${s.text}`, null, [0, 0, 0], s.line)) {
+          const why = sim.events.slice(before).filter((e) => e.type === 'chat' && e.kind === 'error').map((e) => (e as { text: string }).text);
+          const last = sim.events.slice(before).reverse().find((e) => e.type === 'trace' && e.status && e.status !== 'executed');
+          failures.push({ line: s.line, message: `command failed: /${s.text}${why.length ? `: ${why[why.length - 1]}` : last && last.type === 'trace' ? `: ${last.message}` : ''}` });
+        }
         break;
+      }
       case 'expect': {
         checks++;
         const m = check(sim, s.cond);

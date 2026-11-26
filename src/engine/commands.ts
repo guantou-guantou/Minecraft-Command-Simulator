@@ -186,7 +186,8 @@ function executeFrom(src: string, tokens: Token[], i: number, ctx: Ctx, env: Env
       }
       const pass = matched === (sub === 'if');
       trace(env, ctx, `${sub} ${desc} -> ${pass ? 'passed' : 'condition not met'}`, pass ? null : 'condition_false');
-      return pass ? executeFrom(src, tokens, next, ctx, env) : 0;
+      if (!pass) return 0;
+      return tokens[next] ? executeFrom(src, tokens, next, ctx, env) : 1;
     }
     default:
       throw new CommandError('unimplemented', `execute ${sub} is not implemented yet`);

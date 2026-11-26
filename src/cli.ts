@@ -66,3 +66,8 @@ for (const e of sim.events) {
   else if (e.type === 'screen') console.log(`${t} [screen/${e.slot}] -> ${e.to}: ${e.text}`);
   else console.log(`${t}   line ${e.line}: particle ${e.id} at (${e.pos.join(', ')})`);
 }
+const errors = sim.events.filter((e) => e.type === 'chat' && e.kind === 'error').length;
+if (errors) {
+  console.error(`${errors} command error(s)`);
+  process.exit(1);
+}

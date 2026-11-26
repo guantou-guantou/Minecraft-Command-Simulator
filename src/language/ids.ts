@@ -2,6 +2,15 @@
 export const ENTITY_TYPES: string[] = ['slime', 'tnt', 'camel', 'turtle', 'chicken', 'bee', 'axolotl', 'pig', 'hoglin', 'sniffer', 'cat', 'cow', 'sheep', 'armadillo', 'wolf', 'villager', 'wandering_trader', 'mooshroom', 'squid', 'glow_squid', 'strider', 'rabbit', 'happy_ghast', 'bat', 'iron_golem', 'nautilus', 'snow_golem', 'zombie_nautilus', 'ocelot', 'horse', 'trader_llama', 'llama', 'polar_bear', 'parrot', 'dolphin', 'panda', 'fox', 'goat', 'frog', 'tadpole', 'allay', 'tropicalfish', 'cod', 'zombie_villager', 'pufferfish', 'salmon', 'donkey', 'mule', 'skeleton_horse', 'zombie_horse', 'zombie', 'drowned', 'creeper', 'skeleton', 'spider', 'zombie_pigman', 'enderman', 'silverfish', 'cave_spider', 'ghast', 'magma_cube', 'blaze', 'warden', 'witch', 'stray', 'husk', 'wither_skeleton', 'guardian', 'elder_guardian', 'elder_guardian_ghost', 'wither', 'ender_dragon', 'shulker', 'endermite', 'vindicator', 'evocation_illager', 'vex', 'phantom', 'pillager', 'ravager', 'piglin_brute', 'piglin', 'zoglin', 'breeze', 'bogged', 'creaking', 'copper_golem', 'parched', 'camel_husk', 'sulfur_cube', 'minecart', 'hopper_minecart', 'tnt_minecart', 'chest_minecart', 'command_block_minecart', 'xp_bottle', 'xp_orb', 'ender_crystal', 'arrow', 'snowball', 'egg', 'splash_potion', 'leash_knot', 'wind_charge_projectile', 'boat', 'chest_boat', 'lightning_bolt', 'evocation_fang', 'armor_stand', 'fireworks_rocket', 'npc'];
 
 /** A starter list for completion only; ids that appear in the script are suggested as well. */
+/** Real entity ids that the reference list above leaves out (projectiles, items and other things that are not mobs). */
+export const EXTRA_ENTITY_TYPES: string[] = [
+  'item', 'area_effect_cloud', 'falling_block', 'fishing_hook', 'ender_pearl', 'painting', 'thrown_trident', 'fireball', 'wither_skull',
+  'wither_skull_dangerous', 'shulker_bullet', 'eye_of_ender_signal', 'small_fireball', 'dragon_fireball', 'lingering_potion', 'ominous_item_spawner',
+  'xp_orb', 'leash_knot', 'evocation_fang', 'snowball', 'egg', 'arrow', 'splash_potion', 'xp_bottle', 'fireworks_rocket', 'ender_crystal',
+  'minecart', 'chest_minecart', 'hopper_minecart', 'tnt_minecart', 'command_block_minecart', 'furnace_minecart', 'boat', 'chest_boat', 'lightning_bolt',
+  'wind_charge_projectile', 'breeze_wind_charge_projectile', 'npc', 'agent', 'ice_bomb', 'balloon', 'tripod_camera', 'armor_stand',
+];
+
 export const COMMON_BLOCKS: string[] = [
   'air', 'stone', 'dirt', 'grass_block', 'cobblestone', 'oak_planks', 'sand', 'gravel', 'gold_block', 'iron_block', 'diamond_block',
   'emerald_block', 'redstone_block', 'glass', 'obsidian', 'bedrock', 'water', 'lava', 'chest', 'trapped_chest', 'barrel', 'hopper',

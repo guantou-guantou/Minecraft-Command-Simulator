@@ -26,6 +26,11 @@
 
 目前只提供 Windows 版本。
 
+## 系统要求
+
+- **Windows 10 及以上**(64 位)。不支持 Windows 7、8、8.1:桌面外壳使用的 Electron 版本已不再支持这些系统,在上面无法启动。
+- 安装包没有代码签名,首次运行时 Windows SmartScreen 可能会提示"未知发布者",选择"更多信息 → 仍要运行"即可。
+
 ## 从源码运行
 
 需要 Node.js（能直接运行 TypeScript 的新版本）和 npm。
@@ -63,6 +68,8 @@ node src/cli.ts examples/demo.mcsim [chain] [--ticks N] [--export commands|manif
 node src/cli.ts file.mcsim --test            # 运行脚本里的 test 块
 node src/cli.ts file.mcsim --test --only a,b # 只运行指定名称的测试
 ```
+
+退出码:脚本有语法诊断、运行时有指令报错、或有测试失败时为 1;参数用法错误为 2;否则为 0。测试里的 `/指令` 步骤执行失败也算测试失败。
 
 ## 目录结构
 
