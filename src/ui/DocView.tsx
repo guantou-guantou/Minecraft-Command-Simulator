@@ -402,7 +402,7 @@ export function DocView({ doc, active, host, layout, setLayout, setText, files, 
               </div>
             ) : (
               <div key={i} className={`chat ${c.kind}`} onClick={() => jump(c.line)}>
-                {c.kind === 'say' ? `${c.to ? `(to ${c.to}) ` : ''}${c.sender === null && c.to ? '' : `[${c.sender ?? '@'}] `}` : ''}
+                {c.kind === 'say' || c.to ? `${c.to ? `(to ${c.to}) ` : ''}${c.sender === null && c.to ? '' : `[${c.sender ?? '@'}] `}` : ''}
                 <McText text={c.text} />
               </div>
             ),

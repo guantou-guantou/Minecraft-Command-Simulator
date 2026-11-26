@@ -114,6 +114,13 @@ export class Simulation {
         if (this.world.gamerules.commandblockoutput === false) return;
         e = { ...e, text: `\u00a77\u00a7o[!: ${e.text}]\u00a7r` };
       }
+      if (source === 'console' && executor?.type === 'minecraft:player' && e.type === 'chat' && e.kind === 'system' && !e.to && this.world.gamerules.sendcommandfeedback !== false) {
+        const who = executor.name ?? label(executor);
+        for (const other of this.world.entities) {
+          if (other === executor || other.type !== 'minecraft:player') continue;
+          this.emit({ ...e, to: other.name ?? label(other), text: `\u00a77\u00a7o[${who}: ${e.text}]\u00a7r` });
+        }
+      }
       if (e.type === 'trace' || e.type === 'change') {
         if (this.quiet) return;
         if (++used > this.traceBudget) {
