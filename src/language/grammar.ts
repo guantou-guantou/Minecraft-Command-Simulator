@@ -1,4 +1,4 @@
-import { KNOWN_COMMANDS } from '../engine/known-commands.ts';
+import { ADMIN_COMMANDS, KNOWN_COMMANDS, PRESENTATION_COMMANDS } from '../engine/known-commands.ts';
 import { posSpan } from './coords.ts';
 /** Declarative syntax of the commands the simulator knows, shared by completion and its tests. */
 
@@ -191,16 +191,21 @@ export const TEST_LINE: G = A(
   ),
 );
 
+COMMANDS.camera = () => S(
+    L('camera'), target('players'),
+    A(L('clear'), L('fov_clear'), S(L('fade'), O(R('options'))), S(L('set'), V('word', 'preset'), O(R('options'))), S(L('target'), R('options')), S(L('fov_set'), V('float', 'fov'), O(R('options')))),
+  );
+COMMANDS.fog = () => S(L('fog'), target('victim'), A(S(L('push'), V('word', 'fog id'), V('word', 'user id')), S(KW('action', ['pop', 'remove']), V('word', 'user id'))));
+
+/** Recorded commands without a detailed grammar accept any arguments; being in COMMANDS marks them as supported. */
+for (const n of [...PRESENTATION_COMMANDS, ...ADMIN_COMMANDS]) if (!(n in COMMANDS)) COMMANDS[n] = () => S(L(n), O(R('arguments')));
+
 /** Commands the simulator does not run yet but whose syntax is known, so they are still checked (and can follow `execute ... run`). */
 const DAMAGE_CAUSES = ['anvil', 'block_explosion', 'charging', 'contact', 'drowning', 'entity_attack', 'entity_explosion', 'fall', 'falling_block', 'fire', 'fire_tick', 'fly_into_wall', 'freezing', 'lava', 'lightning', 'magic', 'magma', 'none', 'override', 'piston', 'projectile', 'ram_attack', 'self_destruct', 'sonic_boom', 'soul_campfire', 'stalactite', 'stalagmite', 'starve', 'suffocation', 'suicide', 'temperature', 'thorns', 'void', 'wither'];
 const lootSource = (): G => R('loot source');
 
 export const SYNTAX_ONLY: Record<string, () => G> = {
   damage: () => S(L('damage'), target(), int('amount'), O(S(KW('cause', DAMAGE_CAUSES), O(S(L('entity'), target('damager')))))),
-  camera: () => S(
-    L('camera'), target('players'),
-    A(L('clear'), L('fov_clear'), S(L('fade'), O(R('options'))), S(L('set'), V('word', 'preset'), O(R('options'))), S(L('target'), R('options')), S(L('fov_set'), V('float', 'fov'), O(R('options')))),
-  ),
   ride: () => S(
     L('ride'), target(),
     A(
@@ -212,7 +217,6 @@ export const SYNTAX_ONLY: Record<string, () => G> = {
     ),
   ),
   event: () => S(L('event'), L('entity'), target(), V('word', 'event')),
-  fog: () => S(L('fog'), target('victim'), A(S(L('push'), V('word', 'fog id'), V('word', 'user id')), S(KW('action', ['pop', 'remove']), V('word', 'user id')))),
   loot: () => S(
     L('loot'),
     A(

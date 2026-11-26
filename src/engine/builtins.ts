@@ -4,6 +4,8 @@ import { effect, gamerule, titleraw } from './state-commands.ts';
 import { playanimation, stopsound } from './molang-commands.ts';
 import { clearspawnpoint, daylock, difficulty, playsound, setworldspawn, spawnpoint, tell, testforblocks, time, weather } from './world-state-commands.ts';
 import { enchant, gamemode, inputpermission, kick, list, structure, tickingarea, title, xp } from './player-commands.ts';
+import { admin, presentation } from './record-commands.ts';
+import { ADMIN_COMMANDS, PRESENTATION_COMMANDS } from './known-commands.ts';
 import { Registry } from './registry.ts';
 import { scoreboard } from './scoreboard.ts';
 import { clone, fill, kill, particle, summon, tellraw, testfor, testforblock } from './world-commands.ts';
@@ -37,5 +39,7 @@ export function createBuiltinRegistry(): Registry {
   r.register({ name: 'playsound', support: 'record', run: playsound });
   r.register({ name: 'stopsound', support: 'record', run: stopsound });
   r.register({ name: 'particle', support: 'record', run: particle });
+  for (const name of PRESENTATION_COMMANDS) r.register({ name, support: 'record', run: presentation });
+  for (const name of ADMIN_COMMANDS) r.register({ name, support: 'record', run: admin });
   return r;
 }

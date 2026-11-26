@@ -94,3 +94,12 @@ export const KNOWN_COMMANDS = new Set([
   'xp',
 ]);
 
+/** Commands that only change what a client shows or hears. They are checked and recorded, nothing is simulated. */
+export const PRESENTATION_COMMANDS = ['camera', 'camerashake', 'fog', 'hud', 'music', 'dialogue', 'aimassist', 'controlscheme'];
+
+/** Server administration and developer commands: there is no server to change, so they are checked and recorded. */
+export const ADMIN_COMMANDS = [
+  'allowlist', 'whitelist', 'op', 'deop', 'ops', 'permission', 'setmaxplayers', 'stop', 'reload', 'reloadconfig', 'reloadpacketlimitconfig',
+  'transfer', 'changesetting', 'listd', 'save', 'connect', 'wsserver', 'clearrealmevents', 'sendshowstoreoffer', 'packstack', 'project',
+  'gametest', 'script', 'scriptevent', 'codebuilder_actorinfo', 'recipe', 'agent',
+];

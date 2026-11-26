@@ -91,7 +91,7 @@ block(type=gold_block, position=(-1, 64, -1))
 
 test('unsupported things are reported, not ignored', () => {
   const s = load(`ent(type=player, position=(0,0,0), name=p)`);
-  assert.equal(s.runCommand('/camera @a clear', null, [0, 0, 0]), false);
+  assert.equal(s.runCommand('/locate biome plains', null, [0, 0, 0]), false);
   assert.equal(s.runCommand('/execute as @a[limit=1] run say x', null, [0, 0, 0]), false);
   assert.equal(s.runCommand('/tag @s add x', null, [0, 0, 0]), false);
   const statuses = s.events.filter((e) => e.type === 'trace').map((e) => e.status);

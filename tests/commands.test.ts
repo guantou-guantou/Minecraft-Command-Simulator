@@ -20,9 +20,9 @@ const block = (s: Simulation, p: [number, number, number]) => s.world.getBlock(p
 
 test('registry: known-but-unimplemented vs unknown commands', () => {
   const s = load();
-  assert.equal(run(s, '/camera @a clear'), false);
+  assert.equal(run(s, '/locate biome plains'), false);
   assert.equal(run(s, '/frobnicate'), false);
-  assert.deepEqual(errors(s), ['/camera is a Bedrock command that is not implemented yet', 'Unknown command: /frobnicate']);
+  assert.deepEqual(errors(s), ['/locate is a Bedrock command that is not implemented yet', 'Unknown command: /frobnicate']);
   assert.deepEqual(
     s.events.flatMap((e) => (e.type === 'trace' ? [e.status] : [])),
     ['unimplemented', 'syntax_error'],

@@ -51,7 +51,7 @@ test('explainAt: command usage, argument meaning, keys, variables', () => {
   assert.deepEqual(explainAt(line, 3, line)!.lines.slice(0, 2), ['/gamemode', '/gamemode <mode> [<player>]']);
   assert.match(explainAt(line, 12, line)!.lines.join('\n'), /<mode>/);
   assert.match(explainAt('/locate structure x', 2, '')!.lines.join('\n'), /Not implemented yet/);
-  assert.match(explainAt('/allowlist list', 2, '')!.lines.join('\n'), /not implemented/);
+  assert.match(explainAt('/ride @s stop_riding', 2, '')!.lines.join('\n'), /Not implemented yet/);
   assert.match(explainAt('/zzz', 2, '')!.lines.join('\n'), /Unknown/);
   assert.equal(explainAt('/say hi', 99, ''), null);
   const decl = 'a = ent(type=fox, pos=pos1)';
