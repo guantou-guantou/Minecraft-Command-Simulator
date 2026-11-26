@@ -1,3 +1,4 @@
+import { maxHealthOf } from './entity-data.ts';
 import { DEFAULT_REGION, DIR_ID, type BlockStates, type CbMode, type Program, type Region, type Vec3 } from '../language/types.ts';
 import { entitySlotKey, slotKey } from '../language/items.ts';
 import { clampPitch, wrapYaw } from './geometry.ts';
@@ -73,7 +74,7 @@ export class World {
     const e: Entity = {
       id: this.nextId++, handle: opts.handle ?? null, type, name,
       pos: [...pos], rot: [...rot], tags: new Set(opts.tags ?? []), items: {}, selected: opts.selected ?? 0, effects: {},
-      born: opts.born ?? 0, gamemode: 'survival', spawn: null, xpLevel: 0, xpPoints: 0, inputs: {}, molang: {}, anims: {},
+      health: maxHealthOf(type), maxHealth: maxHealthOf(type), born: opts.born ?? 0, gamemode: 'survival', spawn: null, xpLevel: 0, xpPoints: 0, inputs: {}, molang: {}, anims: {},
     };
     this.entities.push(e);
     return e;

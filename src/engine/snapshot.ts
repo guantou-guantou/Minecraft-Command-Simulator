@@ -10,7 +10,7 @@ export interface WorldSnapshot {
   weather: string;
   difficulty: string;
   spawn: Vec3 | null;
-  entities: { id: number; type: string; name: string | null; pos: Vec3; rot: [number, number]; tags: string[]; gamemode: string; effects: Record<string, { amplifier: number; ticks: number | null }> }[];
+  entities: { id: number; type: string; name: string | null; pos: Vec3; rot: [number, number]; tags: string[]; health: number; maxHealth: number; gamemode: string; effects: Record<string, { amplifier: number; ticks: number | null }> }[];
   blocks: { pos: Vec3; id: string; states: Record<string, unknown>; command?: string }[];
   blocksTruncated: boolean;
   scores: Record<string, Record<string, number>>;
@@ -55,6 +55,8 @@ export function snapshot(sim: Simulation, maxBlocks = 2000): WorldSnapshot {
       pos: e.pos.map(round) as Vec3,
       rot: e.rot.map(round) as [number, number],
       tags: [...e.tags].sort(),
+      health: round(e.health),
+      maxHealth: e.maxHealth,
       gamemode: e.gamemode,
       effects: Object.fromEntries(Object.entries(e.effects).map(([k, v]) => [k, { amplifier: v.amplifier, ticks: v.ticks }])),
     })),

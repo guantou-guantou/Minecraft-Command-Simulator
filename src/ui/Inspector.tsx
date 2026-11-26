@@ -58,6 +58,7 @@ export function Inspector({ sim, sel }: { sim: Simulation; sel: Selection }) {
     return (
       <div>
         <div className="insphead"><b>{label(e)}</b> {e.handle && <span className="muted">handle {e.handle}</span>}</div>
+        {e.maxHealth > 0 && <div className="muted">{t('insp.health', { hp: String(Math.round(e.health * 100) / 100), max: String(e.maxHealth) })}</div>}
         {e.type === 'minecraft:player' && (
           <div className="muted">
             {t('insp.player', { mode: e.gamemode, level: e.xpLevel, points: e.xpPoints, off: Object.entries(e.inputs).filter(([, v]) => v === 'disabled').map(([k]) => ` / ${k} off`).join('') })}

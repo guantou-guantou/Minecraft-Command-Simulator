@@ -6,6 +6,9 @@
 
 ### 新增
 
+- 新指令 `damage`(扣生命值,到 0 的实体被移除)、`alwaysday`、`toggledownfall`、`me`、`querytarget`、`spreadplayers`、`function`、`schedule on_area_loaded add`。实体有了生命值(按类型查表),`effect instant_damage` 和 `instant_health` 会改变生命值;世界面板的检查器和 `--state` 输出里能看到生命值。
+- `function 名字:` 块:把一串 `/指令` 打包成函数,用 `/function 名字` 调用;检查会指出不存在的函数。
+- 客户端表现类(`camera`、`camerashake`、`fog`、`hud`、`music`、`dialogue`、`aimassist`、`controlscheme`)和管理类(`op`、`deop`、`allowlist`、`permission`、`setmaxplayers`、`stop`、`reload`、`transfer` 等)指令改为"检查并记录",不再报"尚未实现"。仍未实现的只剩 `event`、`gettopsolidblock`、`help`、`locate`、`loot`、`mobevent`、`place`、`ride`。
 - 命令行子命令:`check`(只检查不运行,输出与编辑器一致的诊断,带行号和列号)、`run`(可多条链、`--all`、`--command`、`--state`)、`test`、`export`。都支持 `--json`,脚本可从标准输入读取(文件名写 `-`),退出码固定为 0、1、2。旧写法仍然可用。
 - `npm run cli:build` 生成单文件 `dist-cli/mcsim.mjs`,只需要 Node 即可运行。
 - 补全里的实体、方块、物品 id 改为从 Mojang 官方的 `@minecraft/vanilla-data`(1.26.60,MIT)生成:实体 131 个、方块 1466 个、物品 1627 个,效果和附魔也用同一份数据核对。`npm run ids:gen` 可以重新生成;不存在的方块名(如旧写法 `concrete`)不再被建议。

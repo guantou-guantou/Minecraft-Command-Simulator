@@ -65,6 +65,9 @@ export interface Entity {
   items: Inventory;
   selected: number;
   effects: Record<string, EffectState>;
+  /** Current and maximum health; maxHealth is 0 for things that have no health (items, projectiles, vehicles). */
+  health: number;
+  maxHealth: number;
   born: number;
   gamemode: string;
   spawn: Vec3 | null;

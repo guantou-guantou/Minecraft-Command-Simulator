@@ -24,7 +24,7 @@ test('argument names get the property colour in every declaration form, short or
 
 test('an unimplemented command after run is reported as not implemented, and other branches still run', () => {
   const s = new Simulation(parse('ent(type=tnt, position=(1.0, 0, 1.0), name=a)\nent(type=cow, position=(3.0, 0, 3.0), name=b)'));
-  assert.equal(s.runCommand('/execute as @e run damage @a 9 entity_explosion', null, [0, 0, 0]), false);
-  assert.ok(s.events.some((e) => e.type === 'trace' && e.status === 'unimplemented' && /damage/.test(e.message)));
+  assert.equal(s.runCommand('/execute as @e run loot give @a mine 0 0 0', null, [0, 0, 0]), false);
+  assert.ok(s.events.some((e) => e.type === 'trace' && e.status === 'unimplemented' && /loot/.test(e.message)));
   assert.equal(s.runCommand('/execute as @e run say still works', null, [0, 0, 0]), true);
 });

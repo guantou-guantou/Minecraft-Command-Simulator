@@ -196,6 +196,7 @@ COMMANDS.toggledownfall = () => S(L('toggledownfall'));
 COMMANDS.me = () => S(L('me'), R('message'));
 COMMANDS.querytarget = () => S(L('querytarget'), target());
 COMMANDS.spreadplayers = () => S(L('spreadplayers'), V('coord', 'x'), V('coord', 'z'), V('float', 'spread distance'), V('float', 'max range'), target('victim'));
+COMMANDS.damage = () => S(L('damage'), target(), int('amount'), O(S(KW('cause', DAMAGE_CAUSES), O(S(L('entity'), target('damager'))))));
 COMMANDS.function = () => S(L('function'), V('word', 'function'));
 COMMANDS.schedule = () => S(
     L('schedule'), L('on_area_loaded'), L('add'),
@@ -215,7 +216,6 @@ const DAMAGE_CAUSES = ['anvil', 'block_explosion', 'charging', 'contact', 'drown
 const lootSource = (): G => R('loot source');
 
 export const SYNTAX_ONLY: Record<string, () => G> = {
-  damage: () => S(L('damage'), target(), int('amount'), O(S(KW('cause', DAMAGE_CAUSES), O(S(L('entity'), target('damager')))))),
   ride: () => S(
     L('ride'), target(),
     A(

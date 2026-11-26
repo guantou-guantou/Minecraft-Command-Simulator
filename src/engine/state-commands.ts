@@ -1,5 +1,6 @@
 import { EFFECT_IDS } from '../language/ids.generated.ts';
 import { syntax, trace } from './args.ts';
+import { applyDamage, applyHeal } from './health-commands.ts';
 import { GAMERULE_DEFAULTS, isIntRule } from './gamerules.ts';
 import { parseJson, renderRawtext } from './rawtext.ts';
 import type { Cmd } from './registry.ts';
@@ -72,8 +73,11 @@ export function effect({ tokens, ctx, env }: Cmd): number {
   let n = 0;
   for (const e of targets) {
     if (INSTANT.has(id)) {
-      trace(env, ctx, `${label(e)}: ${id} is instant; its one-time health change is not simulated`, 'unimplemented');
-      n++;
+      if (e.maxHealth > 0) {
+        if (id === 'instant_damage') applyDamage(env, e, 6 * 2 ** amplifier, 'magic');
+        else applyHeal(env, e, 4 * 2 ** amplifier);
+        n++;
+      }
       continue;
     }
     if (seconds === 0) {
