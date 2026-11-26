@@ -4,6 +4,7 @@ import type { Cmd } from './registry.ts';
 import { resolveTargets } from './selector.ts';
 import { CommandError, label, type Difficulty, type Entity, type Env, type Weather } from './types.ts';
 import type { Vec3 } from '../language/types.ts';
+import { AIR } from './world.ts';
 
 const failed = (m: string) => new CommandError('failed', m);
 const isPlayer = (e: Entity) => e.type === 'minecraft:player';
@@ -236,4 +237,85 @@ export function testforblocks({ tokens, ctx, env }: Cmd): number {
   }
   trace(env, ctx, `${compared} blocks compared`, null);
   return Math.max(1, compared);
+}
+
+export const alwaysday = daylock;
+
+export function toggledownfall({ tokens, env }: Cmd): number {
+  if (tokens[1]) throw syntax(`toggledownfall: unexpected argument "${tokens[1].text}"`);
+  const w = env.world;
+  w.weather = w.weather === 'clear' ? 'rain' : 'clear';
+  w.weatherTicks = 0;
+  chat(env, 'Toggled downfall');
+  return 1;
+}
+
+export function me({ src, tokens, ctx, env }: Cmd): number {
+  if (!tokens[1]) throw syntax('Usage: me <message>');
+  const text = src.slice(tokens[1].start).replace(/@[a-z](?:\[[^\]]*\])?/g, (sel) => resolveTargets(sel, ctx, env.world).map((e) => e.name ?? label(e)).join(', '));
+  env.emit({ type: 'chat', kind: 'system', tick: env.tick, line: env.line, sender: null, text: `* ${ctx.executor ? (ctx.executor.name ?? label(ctx.executor)) : '@'} ${text}` });
+  return 1;
+}
+
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
+export function querytarget({ tokens, ctx, env }: Cmd): number {
+  if (!tokens[1]) throw syntax('Usage: querytarget <target>');
+  if (tokens[2]) throw syntax(`querytarget: unexpected argument "${tokens[2].text}"`);
+  const found = resolveTargets(tokens[1].text, ctx, env.world);
+  if (!found.length) {
+    trace(env, ctx, `querytarget ${tokens[1].text}: no targets`, 'no_targets');
+    return 0;
+  }
+  const data = found.map((e) => ({ dimension: 0, id: String(e.id), position: { x: round2(e.pos[0]), y: round2(e.pos[1]), z: round2(e.pos[2]) }, uniqueId: String(e.id), yRot: round2(e.rot[0]) }));
+  chat(env, `Target data: ${JSON.stringify(data)}`);
+  return found.length;
+}
+
+function spreadCoord(text: string | undefined, base: number, what: string): number {
+  if (text === undefined) throw syntax(`spreadplayers: missing ${what}`);
+  if (text.startsWith('~')) return base + (text.length > 1 ? num(text.slice(1), what, -3e7, 3e7) : 0);
+  const n = num(text, what, -3e7, 3e7);
+  return /[.eE]/.test(text) ? n : n + 0.5;
+}
+
+/** Places the victims at random spots of the square around (x, z), at least spreadDistance apart when that fits, standing on the highest block of the column. */
+export function spreadplayers({ tokens, ctx, env }: Cmd): number {
+  const cx = spreadCoord(tokens[1]?.text, ctx.pos[0], 'x');
+  const cz = spreadCoord(tokens[2]?.text, ctx.pos[2], 'z');
+  const spread = num(tokens[3]?.text, 'spread distance', 0, 3e7);
+  const range = num(tokens[4]?.text, 'max range', spread + 1, 3e7);
+  if (!tokens[5]) throw syntax('Usage: spreadplayers <x> <z> <spreadDistance> <maxRange> <victim>');
+  if (tokens[6]) throw syntax(`spreadplayers: unexpected argument "${tokens[6].text}"`);
+  const victims = resolveTargets(tokens[5].text, ctx, env.world);
+  if (!victims.length) {
+    trace(env, ctx, `spreadplayers ${tokens[5].text}: no targets`, 'no_targets');
+    return 0;
+  }
+  const w = env.world;
+  const spots: [number, number][] = [];
+  const topY = (x: number, z: number, fallback: number) => {
+    for (let y = w.region.max[1]; y >= w.region.min[1]; y--) {
+      let id: string;
+      try {
+        id = w.getBlock([Math.floor(x), y, Math.floor(z)]);
+      } catch {
+        return fallback;
+      }
+      if (id !== AIR) return y + 1;
+    }
+    return fallback;
+  };
+  for (const v of victims) {
+    let spot: [number, number] = [cx, cz];
+    for (let attempt = 0; attempt < 50; attempt++) {
+      spot = [cx + (w.random() * 2 - 1) * range, cz + (w.random() * 2 - 1) * range];
+      if (spots.every((s) => Math.hypot(s[0] - spot[0], s[1] - spot[1]) >= spread)) break;
+    }
+    spots.push(spot);
+    v.pos = [round2(spot[0]), topY(spot[0], spot[1], v.pos[1]), round2(spot[1])];
+    change(env, label(v), `spread to ${fmt(v.pos)}`);
+  }
+  chat(env, `Spread ${victims.length} player(s) around ${round2(cx)}, ${round2(cz)} (${round2(spread)} blocks apart on average)`);
+  return victims.length;
 }

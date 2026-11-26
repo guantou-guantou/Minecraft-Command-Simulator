@@ -2,7 +2,7 @@ import { execute, say, setblock, tag, tp } from './commands.ts';
 import { clear, give, replaceitem } from './inventory-commands.ts';
 import { effect, gamerule, titleraw } from './state-commands.ts';
 import { playanimation, stopsound } from './molang-commands.ts';
-import { clearspawnpoint, daylock, difficulty, playsound, setworldspawn, spawnpoint, tell, testforblocks, time, weather } from './world-state-commands.ts';
+import { alwaysday, clearspawnpoint, daylock, difficulty, me, querytarget, spreadplayers, toggledownfall, playsound, setworldspawn, spawnpoint, tell, testforblocks, time, weather } from './world-state-commands.ts';
 import { enchant, gamemode, inputpermission, kick, list, structure, tickingarea, title, xp } from './player-commands.ts';
 import { admin, presentation } from './record-commands.ts';
 import { ADMIN_COMMANDS, PRESENTATION_COMMANDS } from './known-commands.ts';
@@ -34,7 +34,7 @@ export function createBuiltinRegistry(): Registry {
   r.register({ name: 'playanimation', support: 'full', run: playanimation });
   for (const [name, run] of Object.entries({ enchant, gamemode, inputpermission, kick, list, tickingarea, title, xp })) r.register({ name, support: 'full', run });
   r.register({ name: 'structure', support: 'full', run: structure });
-  for (const [name, run] of Object.entries({ time, weather, difficulty, daylock, spawnpoint, setworldspawn, clearspawnpoint, testforblocks })) r.register({ name, support: 'full', run });
+  for (const [name, run] of Object.entries({ time, weather, difficulty, daylock, alwaysday, toggledownfall, me, querytarget, spreadplayers, spawnpoint, setworldspawn, clearspawnpoint, testforblocks })) r.register({ name, support: 'full', run });
   r.register({ name: 'tell', aliases: ['msg', 'w'], support: 'full', run: tell });
   r.register({ name: 'playsound', support: 'record', run: playsound });
   r.register({ name: 'stopsound', support: 'record', run: stopsound });
