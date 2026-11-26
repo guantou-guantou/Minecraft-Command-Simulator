@@ -18,7 +18,7 @@ const feedback = (env: Env, text: string) => {
  */
 export function runFunction(name: string, ctx: Ctx, env: Env): number {
   const fn = env.functions.get(name);
-  if (!fn) throw failed(`Function not found: ${name}`);
+  if (!fn) throw failed(`Function ${name} not found.`);
   const depth = env.fnDepth ?? 0;
   if (depth >= MAX_DEPTH) throw failed(`Function calls are nested more than ${MAX_DEPTH} deep (in ${name})`);
   const budget = env.fnBudget ?? { left: MAX_COMMANDS };
@@ -75,7 +75,7 @@ export function schedule({ tokens, ctx, env }: Cmd): number {
   fn = tokens[rest]?.text;
   if (!fn) throw syntax('schedule: expected a function name');
   if (tokens[rest + 1]) throw syntax(`schedule: unexpected argument "${tokens[rest + 1].text}"`);
-  if (!env.functions.has(fn)) throw failed(`Function not found: ${fn}`);
+  if (!env.functions.has(fn)) throw failed(`Function ${fn} not found.`);
   env.world.scheduled.push({ tick: env.tick, fn, pos, line: env.line });
   trace(env, ctx, `schedule: function ${fn} will run when the area around ${fmt(pos)} is loaded (the next processed tick)`);
   feedback(env, `Scheduled function '${fn}' to run when the area is loaded`);

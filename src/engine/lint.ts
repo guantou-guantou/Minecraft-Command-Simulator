@@ -14,7 +14,7 @@ export function lintProgram(program: Program): Diagnostic[] {
     const fn = at('function');
     const sched = at('schedule');
     const called = fn >= 0 ? tokens[fn + 1]?.text : sched >= 0 ? tokens[tokens.length - 1]?.text : undefined;
-    if (called && !known.has(called) && (fn >= 0 || tokens[sched + 1]?.text === 'on_area_loaded')) out.push({ line, message: `Function not found: ${called}` });
+    if (called && !known.has(called) && (fn >= 0 || tokens[sched + 1]?.text === 'on_area_loaded')) out.push({ line, message: `Function ${called} not found.` });
     const i = at('playanimation');
     if (i < 0) continue;
     try {

@@ -55,7 +55,7 @@ test('/function runs the commands in order as the caller, keeps going after a fa
 test('a missing function and runaway recursion fail cleanly', () => {
   const sim = make();
   assert.equal(sim.runCommand('/function nope', null, [0, 0, 0]), false);
-  assert.ok(texts(sim).some((t) => t.includes('Function not found: nope')));
+  assert.ok(texts(sim).some((t) => t.includes('Function nope not found.')));
   assert.equal(sim.runCommand('/function loop', null, [0, 0, 0]), true);
   assert.ok(texts(sim).some((t) => t.includes('nested more than')));
 });
@@ -92,5 +92,5 @@ test('function bodies must be /commands, names are unique, lint and completion k
 
 test('check reports functions that do not exist', () => {
   const p = parse('function a:\n    /say hi\n    /function b\nchain c:\n    /execute as @a run function a\n    /function zz\n    /schedule on_area_loaded add circle 0 0 0 3 nope\n');
-  assert.deepEqual(lintProgram(p).map((d) => [d.line, d.message]), [[3, 'Function not found: b'], [6, 'Function not found: zz'], [7, 'Function not found: nope']]);
+  assert.deepEqual(lintProgram(p).map((d) => [d.line, d.message]), [[3, 'Function b not found.'], [6, 'Function zz not found.'], [7, 'Function nope not found.']]);
 });

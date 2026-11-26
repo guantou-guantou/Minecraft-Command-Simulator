@@ -42,14 +42,41 @@ export const FAMILIES: Record<string, string[]> = {
   [e('minecart')]: ['minecart', 'inanimate'],
 };
 
-/** Maximum health of the common mobs, without the minecraft: prefix; entities that are not listed (and are alive) have 20. Unverified against the NetEase edition. */
+/** Maximum health by entity type (Bedrock ids without the minecraft: prefix), from the Chinese Minecraft Wiki's health page; entities that are not listed (and are alive) have 20. Horses, donkeys, mules and llamas have a random value between 15 and 30, the table uses 22.5. */
 export const MAX_HEALTH: Record<string, number> = {
-  player: 20, zombie: 20, husk: 20, drowned: 20, skeleton: 20, stray: 20, creeper: 20, spider: 16, cave_spider: 12, enderman: 40, witch: 26,
-  pig: 10, cow: 10, mooshroom: 10, sheep: 8, chicken: 4, rabbit: 3, bat: 6, cat: 10, ocelot: 10, fox: 10, bee: 10, villager: 20,
-  wandering_trader: 20, iron_golem: 100, snow_golem: 4, armor_stand: 6, squid: 10, glow_squid: 10, blaze: 20, ghast: 10, ender_dragon: 200,
-  zombie_pigman: 20, piglin: 16, hoglin: 40, turtle: 30, parrot: 6, dolphin: 10, panda: 20, polar_bear: 30, llama: 22, axolotl: 14, goat: 10, frog: 10,
+  player: 20, allay: 20, armadillo: 12, armor_stand: 6, axolotl: 14, bat: 6, bee: 10, camel: 32, camel_husk: 32, cat: 10, chicken: 4, cod: 3,
+  copper_golem: 12, cow: 10, dolphin: 10, donkey: 22.5, fox: 10, frog: 10, glow_squid: 10, goat: 10, ghast: 10, happy_ghast: 20, horse: 22.5,
+  iron_golem: 100, llama: 22.5, mooshroom: 10, mule: 22.5, nautilus: 15, ocelot: 10, panda: 20, parrot: 6, pig: 10, polar_bear: 30,
+  pufferfish: 3, rabbit: 3, salmon: 3, sheep: 8, skeleton_horse: 15, sniffer: 14, snow_golem: 4, squid: 10, strider: 20, tadpole: 6,
+  trader_llama: 22.5, tropicalfish: 3, turtle: 30, villager: 20, villager_v2: 20, wandering_trader: 20, wolf: 8, zombie_horse: 25, zombie_nautilus: 15,
+  blaze: 20, bogged: 16, breeze: 30, cave_spider: 12, creaking: 1, creeper: 20, drowned: 20, elder_guardian: 80, ender_dragon: 200, enderman: 40,
+  endermite: 8, evocation_illager: 24, guardian: 30, hoglin: 40, husk: 20, magma_cube: 16, phantom: 20, piglin: 16, piglin_brute: 50, pillager: 24,
+  ravager: 100, shulker: 30, silverfish: 8, skeleton: 20, slime: 16, spider: 16, stray: 20, vex: 14, vindicator: 24, warden: 500, witch: 26,
+  wither: 300, wither_skeleton: 20, zoglin: 40, zombie: 20, zombie_pigman: 20, zombie_villager: 20, zombie_villager_v2: 20,
 };
 
+/** Undead: instant health hurts them and instant damage heals them. */
+export const UNDEAD = new Set([
+  'zombie', 'husk', 'drowned', 'zombie_villager', 'zombie_villager_v2', 'zombie_pigman', 'skeleton', 'stray', 'wither_skeleton', 'bogged',
+  'zombie_horse', 'skeleton_horse', 'phantom', 'wither', 'zoglin', 'camel_husk', 'zombie_nautilus',
+]);
+
+/** Armor points of the four pieces (helmet, chestplate, leggings, boots) by material, and the toughness each piece of that material gives. */
+const ARMOR: Record<string, { points: [number, number, number, number]; toughness: number }> = {
+  leather: { points: [1, 3, 2, 1], toughness: 0 }, copper: { points: [2, 4, 3, 1], toughness: 0 }, golden: { points: [2, 5, 3, 1], toughness: 0 },
+  chainmail: { points: [2, 5, 4, 1], toughness: 0 }, iron: { points: [2, 6, 5, 2], toughness: 0 },
+  diamond: { points: [3, 8, 6, 3], toughness: 2 }, netherite: { points: [3, 8, 6, 3], toughness: 3 },
+};
+const PIECE = ['helmet', 'chestplate', 'leggings', 'boots'];
+
+/** Armor points and toughness of one worn item (0 for anything that is not armor). */
+export function armorOfItem(id: string): { armor: number; toughness: number } {
+  const n = id.replace(/^minecraft:/, '');
+  if (n === 'turtle_helmet') return { armor: 2, toughness: 0 };
+  const m = /^(\w+?)_(helmet|chestplate|leggings|boots)$/.exec(n);
+  const mat = m && ARMOR[m[1]];
+  return mat ? { armor: mat.points[PIECE.indexOf(m![2])], toughness: mat.toughness } : { armor: 0, toughness: 0 };
+}
 /** Things that have no health: items, projectiles, vehicles, markers and the like (damage cannot be dealt to them). */
 export const NON_LIVING = new Set([
   'item', 'xp_orb', 'arrow', 'area_effect_cloud', 'falling_block', 'painting', 'boat', 'chest_boat', 'minecart', 'chest_minecart', 'hopper_minecart',

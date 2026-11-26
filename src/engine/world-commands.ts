@@ -215,7 +215,7 @@ export function tellraw({ src, tokens, ctx, env }: Cmd): number {
   }
   if (usedTranslate) trace(env, ctx, 'tellraw: translation keys are not looked up; the key itself is shown', 'unimplemented');
   for (const p of players) {
-    env.emit({ type: 'chat', kind: 'say', tick: env.tick, line: env.line, sender: null, text, to: p.name ?? label(p) });
+    env.emit({ type: 'chat', kind: 'say', tick: env.tick, line: env.line, sender: env.source === 'block' ? '!' : null, text, to: p.name ?? label(p) });
   }
   return players.length;
 }

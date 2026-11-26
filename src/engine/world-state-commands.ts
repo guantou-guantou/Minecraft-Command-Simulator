@@ -95,7 +95,6 @@ export function daylock({ tokens, env }: Cmd): number {
   if (tokens[2]) throw syntax(`daylock: unexpected argument "${tokens[2].text}"`);
   const lock = a !== 'false';
   env.world.gamerules.dodaylightcycle = !lock;
-  chat(env, lock ? 'Day-Night cycle locked' : 'Day-Night cycle unlocked');
   return 1;
 }
 
@@ -203,7 +202,7 @@ export function tell(cmd: Cmd): number {
     trace(env, ctx, `tell ${tokens[1].text}: no player matches`, 'no_targets');
     return 0;
   }
-  const sender = ctx.executor ? (ctx.executor.name ?? label(ctx.executor)) : '@';
+  const sender = ctx.executor ? (ctx.executor.name ?? label(ctx.executor)) : env.source === 'block' ? '!' : '@';
   for (const p of targets) {
     const name = p.name ?? label(p);
     chat(env, `<${sender}> \u00a7o${sender} whispers to you: ${message}\u00a7r`, name);
@@ -253,11 +252,31 @@ export function toggledownfall({ tokens, env }: Cmd): number {
 export function me({ src, tokens, ctx, env }: Cmd): number {
   if (!tokens[1]) throw syntax('Usage: me <message>');
   const text = src.slice(tokens[1].start).replace(/@[a-z](?:\[[^\]]*\])?/g, (sel) => resolveTargets(sel, ctx, env.world).map((e) => e.name ?? label(e)).join(', '));
-  env.emit({ type: 'chat', kind: 'system', tick: env.tick, line: env.line, sender: null, text: `* ${ctx.executor ? (ctx.executor.name ?? label(ctx.executor)) : '@'} ${text}` });
+  env.emit({ type: 'chat', kind: 'plain', tick: env.tick, line: env.line, sender: null, text: `* ${ctx.executor ? (ctx.executor.name ?? label(ctx.executor)) : env.source === 'block' ? '!' : '@'} ${text}` });
   return 1;
 }
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
+
+/** JSON the way the game prints querytarget: four spaces per level and a space on both sides of the colon. */
+function gameJson(v: unknown, indent = 0): string {
+  const pad = (n: number) => ' '.repeat(n);
+  if (Array.isArray(v)) return `[\n${v.map((x) => pad(indent + 4) + gameJson(x, indent + 4)).join(',\n')}\n${pad(indent)}]`;
+  if (v && typeof v === 'object') return `{\n${Object.entries(v).map(([k, x]) => `${pad(indent + 4)}${JSON.stringify(k)} : ${gameJson(x, indent + 4)}`).join(',\n')}\n${pad(indent)}}`;
+  return JSON.stringify(v);
+}
+
+/** A stable UUID-shaped text for an entity (the real ids are random). */
+function uuidOf(id: number): string {
+  let h = 0x9e3779b9 ^ id;
+  const hex = Array.from({ length: 4 }, () => {
+    h = Math.imul(h ^ (h >>> 15), 0x2c1b3c6d);
+    h = Math.imul(h ^ (h >>> 12), 0x297a2d39);
+    h ^= h >>> 15;
+    return (h >>> 0).toString(16).padStart(8, '0');
+  }).join('');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-8${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
+}
 
 export function querytarget({ tokens, ctx, env }: Cmd): number {
   if (!tokens[1]) throw syntax('Usage: querytarget <target>');
@@ -267,11 +286,10 @@ export function querytarget({ tokens, ctx, env }: Cmd): number {
     trace(env, ctx, `querytarget ${tokens[1].text}: no targets`, 'no_targets');
     return 0;
   }
-  const data = found.map((e) => ({ dimension: 0, id: String(e.id), position: { x: round2(e.pos[0]), y: round2(e.pos[1]), z: round2(e.pos[2]) }, uniqueId: String(e.id), yRot: round2(e.rot[0]) }));
-  chat(env, `Target data: ${JSON.stringify(data)}`);
+  const data = found.map((e) => ({ dimension: 0, id: e.id - 4294967296, position: { x: e.pos[0], y: e.pos[1], z: e.pos[2] }, uniqueId: uuidOf(e.id), yRot: e.rot[0] }));
+  chat(env, `Target data:${gameJson(data)}`);
   return found.length;
 }
-
 function spreadCoord(text: string | undefined, base: number, what: string): number {
   if (text === undefined) throw syntax(`spreadplayers: missing ${what}`);
   if (text.startsWith('~')) return base + (text.length > 1 ? num(text.slice(1), what, -3e7, 3e7) : 0);

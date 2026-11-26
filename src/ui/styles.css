@@ -43,7 +43,7 @@ th { color: #999; font-weight: normal; position: sticky; top: 0; background: #25
 .termin input[type=text] { flex: 1; font-family: Consolas, monospace; }
 .chat { font-family: Consolas, "Courier New", monospace; padding: 1px 8px; cursor: pointer; }
 .chat.error { color: #f77; }
-.chat.system { color: #999; }
+.chat.system { color: #ddd; }
 .muted { color: #777; padding: 6px 8px; }
 .row.effect { color: #c9a0ff; }
 tr.selrow td { background: #264f7855; }

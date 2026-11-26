@@ -4,6 +4,7 @@ import { createBuiltinRegistry } from './builtins.ts';
 import { tickAnimations } from './molang-commands.ts';
 import { tickWorld } from './clock.ts';
 import { executeCommand } from './commands.ts';
+import { tickInstant } from './health-commands.ts';
 import type { Registry } from './registry.ts';
 import { resolveTargets } from './selector.ts';
 import { CommandError, label, type BlockData, type CommandBlockData, type Entity, type SimEvent } from './types.ts';
@@ -102,12 +103,17 @@ export class Simulation {
     return resolveTargets(selector, { executor: null, pos: from, rot: [0, 0], anchor: 'feet' }, this.world);
   }
 
-  runCommand(text: string, executor: Entity | null, pos: Vec3, line = 0, rotation?: [number, number]): boolean {
+  runCommand(text: string, executor: Entity | null, pos: Vec3, line = 0, rotation?: [number, number], source: 'block' | 'console' = 'console'): boolean {
     const rot: [number, number] = rotation ? [...rotation] : executor ? [...executor.rot] : [0, 0];
     const src = text.trim().replace(/^\//, '');
     let used = 0;
     let dropped = 0;
-    const emit = (e: SimEvent) => {
+    const emit = (raw: SimEvent) => {
+      let e = raw;
+      if (source === 'block' && e.type === 'chat' && e.kind === 'system' && !e.to) {
+        if (this.world.gamerules.commandblockoutput === false) return;
+        e = { ...e, text: `\u00a77\u00a7o[!: ${e.text}]\u00a7r` };
+      }
       if (e.type === 'trace' || e.type === 'change') {
         if (this.quiet) return;
         if (++used > this.traceBudget) {
@@ -117,7 +123,7 @@ export class Simulation {
       }
       this.emit(e);
     };
-    const env = { world: this.world, library: this.library, commands: this.commands, functions: this.functions, tick: this.tick, line, emit };
+    const env = { world: this.world, library: this.library, commands: this.commands, functions: this.functions, source, tick: this.tick, line, emit };
     try {
       const ok = executeCommand(src, { executor, pos, rot, anchor: 'feet' as const }, env) > 0;
       if (dropped) {
@@ -153,7 +159,7 @@ export class Simulation {
       last[idx] = false;
       return { line: node.line, success: false, skipped: true };
     }
-    last[idx] = this.runCommand(node.command, null, this.origin(node), node.line, chain.rotation);
+    last[idx] = this.runCommand(node.command, null, this.origin(node), node.line, chain.rotation, 'block');
     return { line: node.line, success: last[idx], skipped: false };
   }
 
@@ -234,8 +240,11 @@ export class Simulation {
   }
 
   private tickEffects(): void {
-    for (const e of this.world.entities) {
+    for (const e of [...this.world.entities]) {
       for (const [id, fx] of Object.entries(e.effects)) {
+        if (id === 'instant_health' || id === 'instant_damage') {
+          if (this.world.entities.includes(e)) tickInstant({ world: this.world, library: this.library, commands: this.commands, functions: this.functions, source: 'console', tick: this.tick, line: 0, emit: this.emit }, e, id, fx);
+        }
         if (fx.ticks === null) continue;
         fx.ticks--;
         if (fx.ticks > 0) continue;

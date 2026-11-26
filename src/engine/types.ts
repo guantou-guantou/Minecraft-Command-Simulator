@@ -52,6 +52,8 @@ export interface EffectState {
   amplifier: number;
   ticks: number | null;
   hideParticles: boolean;
+  /** Instant effects given by /effect act every tick; instant_damage can hurt only once every 10 ticks (hit immunity). */
+  cooldown?: number;
 }
 
 export interface Entity {
@@ -79,7 +81,7 @@ export interface Entity {
 }
 
 export type SimEvent =
-  | { type: 'chat'; kind: 'say' | 'error' | 'system'; tick: number; line: number; sender: string | null; text: string; to?: string }
+  | { type: 'chat'; kind: 'say' | 'error' | 'system' | 'plain'; tick: number; line: number; sender: string | null; text: string; to?: string }
   | { type: 'screen'; tick: number; line: number; to: string; slot: 'title' | 'subtitle' | 'actionbar' | 'clear' | 'reset' | 'times'; text: string }
   | { type: 'effect'; kind: 'particle'; tick: number; line: number; id: string; pos: Vec3 }
   | { type: 'trace'; tick: number; line: number; branch: string | null; status: Status | null; message: string }
@@ -99,6 +101,8 @@ export interface Env {
   commands: import('./registry.ts').Registry;
   /** The unction name: blocks of the script. */
   functions: Map<string, import('../language/types.ts').FunctionDecl>;
+  /** Where the command comes from: a command block (its chat output has the [!] form) or the console/terminal. */
+  source?: 'block' | 'console';
   /** How deep function calls are nested, and how many commands the running function calls may still run. */
   fnDepth?: number;
   fnBudget?: { left: number };

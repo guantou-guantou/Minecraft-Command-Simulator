@@ -200,7 +200,7 @@ export function say({ src, tokens, ctx, env }: { src: string; tokens: Token[]; c
   const text = raw.replace(/@[a-z](?:\[[^\]]*\])?/g, (sel) =>
     resolveTargets(sel, ctx, env.world).map((e) => e.name ?? label(e)).join(', '),
   );
-  env.emit({ type: 'chat', kind: 'say', tick: env.tick, line: env.line, sender: ctx.executor ? (ctx.executor.name ?? label(ctx.executor)) : null, text });
+  env.emit({ type: 'chat', kind: 'say', tick: env.tick, line: env.line, sender: ctx.executor ? (ctx.executor.name ?? label(ctx.executor)) : env.source === 'block' ? '!' : null, text });
   return 1;
 }
 

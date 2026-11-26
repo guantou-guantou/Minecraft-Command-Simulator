@@ -4,9 +4,15 @@
 
 ## 未发布
 
+### 修复
+
+- 命令方块的聊天输出改成游戏里的形式:`say`、`tellraw` 是白色的 `[!] 消息`;`commandblockoutput` 为 true 时指令输出是灰色斜体的 `[!: 输出]`,为 false 时不显示。`/me` 在命令方块里名字是 `!`。
+- `/alwaysday` 和 `/daylock` 不再有输出。
+- `/querytarget` 的输出改成游戏里的格式(缩进的 JSON,数字 id,UUID,不取整的坐标)。
+
 ### 新增
 
-- 新指令 `damage`(扣生命值,到 0 的实体被移除)、`alwaysday`、`toggledownfall`、`me`、`querytarget`、`spreadplayers`、`function`、`schedule on_area_loaded add`。实体有了生命值(按类型查表),`effect instant_damage` 和 `instant_health` 会改变生命值;世界面板的检查器和 `--state` 输出里能看到生命值。
+- 新指令 `damage`(扣生命值,到 0 的实体被移除)、`alwaysday`、`toggledownfall`、`me`、`querytarget`、`spreadplayers`、`function`、`schedule on_area_loaded add`。实体有了生命值(取自 Wiki 的基岩版数值),`/damage` 考虑护甲、抗性提升和游戏模式(创造模式免疫),`effect instant_damage` 和 `instant_health` 按 Wiki 的数值每刻生效(亡灵相反);世界面板的检查器和 `--state` 输出里能看到生命值。
 - `function 名字:` 块:把一串 `/指令` 打包成函数,用 `/function 名字` 调用;检查会指出不存在的函数。
 - 客户端表现类(`camera`、`camerashake`、`fog`、`hud`、`music`、`dialogue`、`aimassist`、`controlscheme`)和管理类(`op`、`deop`、`allowlist`、`permission`、`setmaxplayers`、`stop`、`reload`、`transfer` 等)指令改为"检查并记录",不再报"尚未实现"。仍未实现的只剩 `event`、`gettopsolidblock`、`help`、`locate`、`loot`、`mobevent`、`place`、`ride`。
 - 命令行子命令:`check`(只检查不运行,输出与编辑器一致的诊断,带行号和列号)、`run`(可多条链、`--all`、`--command`、`--state`)、`test`、`export`。都支持 `--json`,脚本可从标准输入读取(文件名写 `-`),退出码固定为 0、1、2。旧写法仍然可用。

@@ -1,6 +1,6 @@
 import { EFFECT_IDS } from '../language/ids.generated.ts';
 import { syntax, trace } from './args.ts';
-import { applyDamage, applyHeal } from './health-commands.ts';
+import { applyInstant } from './health-commands.ts';
 import { GAMERULE_DEFAULTS, isIntRule } from './gamerules.ts';
 import { parseJson, renderRawtext } from './rawtext.ts';
 import type { Cmd } from './registry.ts';
@@ -72,18 +72,17 @@ export function effect({ tokens, ctx, env }: Cmd): number {
   }
   let n = 0;
   for (const e of targets) {
-    if (INSTANT.has(id)) {
-      if (e.maxHealth > 0) {
-        if (id === 'instant_damage') applyDamage(env, e, 6 * 2 ** amplifier, 'magic');
-        else applyHeal(env, e, 4 * 2 ** amplifier);
-        n++;
-      }
-      continue;
-    }
     if (seconds === 0) {
       if (!e.effects[id]) continue;
       delete e.effects[id];
       env.emit({ type: 'change', tick: env.tick, line: env.line, target: label(e), what: `removed effect ${id}` });
+      n++;
+      continue;
+    }
+    if (INSTANT.has(id)) {
+      if (e.maxHealth <= 0) continue;
+      applyInstant(env, e, id as 'instant_health' | 'instant_damage', amplifier);
+      if (seconds === null || seconds > 1) e.effects[id] = { amplifier, ticks: seconds === null ? null : seconds - 1, hideParticles: false, cooldown: 9 };
       n++;
       continue;
     }

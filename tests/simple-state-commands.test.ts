@@ -44,8 +44,8 @@ test('querytarget prints the position and rotation of every target', () => {
   const sim = make();
   assert.equal(sim.runCommand('/querytarget A', null, [0, 0, 0]), true);
   const out = says(sim).at(-1)!;
-  assert.match(out, /^Target data: \[/);
-  const data = JSON.parse(out.slice('Target data: '.length));
+  assert.match(out, /^Target data:\[\n    \{\n        "dimension" : 0,\n        "id" : -4294967295,\n/);
+  const data = JSON.parse(out.slice('Target data:'.length));
   assert.deepEqual(data[0].position, { x: 0.5, y: 4, z: 0.5 });
   assert.equal(data[0].dimension, 0);
   assert.equal(sim.runCommand('/querytarget @e[type=creeper]', null, [0, 0, 0]), false);
