@@ -262,11 +262,13 @@ function resolvePlaceholders(prog: Program, diag: (line: number, message: string
       n.command = n.command.replace(/<<set:(\w+):(\d+):(\w+)>>/g, (all, name: string, level: string, block: string) => {
         const ref = prog.chains.find((x) => x.name === name);
         const node = ref?.toggles?.[Number(level)] !== undefined ? ref.nodes[ref.toggles[Number(level)]] : undefined;
-        if (!node?.pos) {
+        if (!node?.pos || !n.pos) {
           diag(n.line, `cannot place ${all}`);
           return all;
         }
-        return `${node.pos.join(' ')} ${block} ["facing_direction"=${DIR_ID[node.facing]}]`;
+        const at = n.pos;
+        const rel = (k: number) => (at![k] === node.pos![k] ? '~' : `~${node.pos![k] - at![k]}`);
+        return `${rel(0)} ${rel(1)} ${rel(2)} ${block} ["facing_direction"=${DIR_ID[node.facing]}]`;
       });
       n.command = n.command.replace(/<<(tpl|gap):(\w+)>>/g, (all, kind: string, name: string) => {
         const ref = prog.chains.find((x) => x.name === name);

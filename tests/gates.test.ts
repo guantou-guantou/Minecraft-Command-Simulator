@@ -23,11 +23,11 @@ test('an if:/run: chain is one chain: detector, switch block, run blocks and the
   const a = p.chains[0];
   assert.deepEqual(a.nodes.map((n) => [n.cb.mode, n.cb.power, n.cb.conditional, n.pos, n.command]), [
     ['rep', 'always_on', false, [0, 0, 0], 'execute if entity @a[tag=go]'],
-    ['cha', 'always_on', true, [1, 0, 0], 'setblock 2 0 0 chain_command_block ["facing_direction"=5]'],
+    ['cha', 'always_on', true, [1, 0, 0], 'setblock ~1 ~ ~ chain_command_block ["facing_direction"=5]'],
     ['imp', 'always_on', false, [2, 0, 0], 'say 111'],
     ['cha', 'always_on', false, [3, 0, 0], 'say 222'],
     ['cha', 'always_on', false, [4, 0, 0], 'tag @a remove go'],
-    ['cha', 'always_on', false, [5, 0, 0], 'setblock 2 0 0 command_block ["facing_direction"=5]'],
+    ['cha', 'always_on', false, [5, 0, 0], 'setblock ~-3 ~ ~ command_block ["facing_direction"=5]'],
   ]);
   assert.deepEqual(a.nodes.map((n) => n.line), [4, 3, 6, 7, 8, 5]);
 });
@@ -85,15 +85,15 @@ chain a(pos=(0, 0, 0), facing=south):
   assert.deepEqual(p.chains.map((c) => c.name), ['a']);
   assert.deepEqual(p.chains[0].nodes.map((n) => n.command), [
     'execute if entity @a[tag=go]',
-    'setblock 0 0 2 chain_command_block ["facing_direction"=3]',
+    'setblock ~ ~ ~1 chain_command_block ["facing_direction"=3]',
     'say level one',
-    'setblock 0 0 2 command_block ["facing_direction"=3]',
+    'setblock ~ ~ ~-1 command_block ["facing_direction"=3]',
     'execute if entity @a[tag=deeper]',
-    'setblock 0 0 6 chain_command_block ["facing_direction"=3]',
+    'setblock ~ ~ ~1 chain_command_block ["facing_direction"=3]',
     'say level two',
     'tag @a remove go',
     'tag @a remove deeper',
-    'setblock 0 0 6 command_block ["facing_direction"=3]',
+    'setblock ~ ~ ~-3 command_block ["facing_direction"=3]',
   ]);
   const sim = new Simulation(p);
   sim.activate('a');
