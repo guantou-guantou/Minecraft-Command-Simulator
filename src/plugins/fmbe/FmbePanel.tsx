@@ -5,8 +5,8 @@ import { Fmbe3D } from './Fmbe3D.tsx';
 import { evaluate, fmtValue, MolangError, parseMolang } from '../../engine/molang.ts';
 import type { PluginContext } from '../host.ts';
 import {
-  DEFAULT_SET_ANIMATION, DEFAULT_SET_CONTROLLER, DEFAULT_TAG, VARIABLES, fillItemCommand, foxScript, foxSetupCommands,
-  prerequisiteCommands, prerequisiteScript, readTransform, selectorFor, transformCommand, type FoxSpec,
+  DEFAULT_SET_ANIMATION, DEFAULT_SET_CONTROLLER, DEFAULT_TAG, EX_VARIABLES, FMBE_VERSIONS, VARIABLES, commandsScript, fillItemCommand, foxScript, foxSetupCommands,
+  parseCustomPrerequisite, prerequisiteCommands, prerequisiteScript, readTransform, selectorFor, transformCommand, variablesFor, type FmbeVersion, type FoxSpec,
 } from './core.ts';
 
 const O: Vec3 = [0, 0, 0];
@@ -41,6 +41,8 @@ export function FmbePanel({ ctx }: { ctx: PluginContext }) {
 
   const [tag, setTag] = useState(DEFAULT_TAG);
   const [chainName, setChainName] = useState('fmbe_render');
+  const [version, setVersion] = useState<FmbeVersion>('standard');
+  const [custom, setCustom] = useState('');
 
   const [name, setName] = useState('wiki:fmbe');
   const [handle, setHandle] = useState('fmbe1');
@@ -56,7 +58,7 @@ export function FmbePanel({ ctx }: { ctx: PluginContext }) {
   const [animation, setAnimation] = useState(DEFAULT_SET_ANIMATION);
   const [controller, setController] = useState(DEFAULT_SET_CONTROLLER);
   const [enabled, setEnabled] = useState<Record<string, boolean>>({});
-  const [values, setValues] = useState<Record<string, string>>(() => Object.fromEntries(VARIABLES.map((v) => [v.name, String(v.default)])));
+  const [values, setValues] = useState<Record<string, string>>(() => Object.fromEntries([...VARIABLES, ...EX_VARIABLES].map((v) => [v.name, String(v.default)])));
   const [pasted, setPasted] = useState('');
 
   const [consoleTarget, setConsoleTarget] = useState('');
@@ -69,7 +71,7 @@ export function FmbePanel({ ctx }: { ctx: PluginContext }) {
     position: pos.some((p) => p.trim() === '' || !Number.isFinite(Number(p))) ? null : (pos.map(Number) as Vec3),
   });
   const transformValues = () =>
-    Object.fromEntries(VARIABLES.filter((v) => enabled[v.name]).map((v) => [v.name, Number(values[v.name])])) as Record<string, number>;
+    Object.fromEntries(variablesFor(version).filter((v) => enabled[v.name]).map((v) => [v.name, Number(values[v.name])])) as Record<string, number>;
   const currentTransform = () => transformCommand({ selector, values: transformValues(), animation, controller });
 
   const entities = ctx.sim.world.entities;
@@ -105,8 +107,20 @@ export function FmbePanel({ ctx }: { ctx: PluginContext }) {
           <input style={{ width: 110 }} value={chainName} onChange={(e) => setChainName(e.target.value)} />
         </div>
         <div className="nxrow">
-          <button onClick={() => attempt(() => { ctx.insertText(prerequisiteScript(tag, chainName)); return 'Inserted the 8-command chain (one repeating block and 7 chain blocks)'; })}>{t('fm.insertChain')}</button>
-          <button onClick={() => attempt(() => runAll(prerequisiteCommands(tag)))}>{t('fm.runOnceNow')}</button>
+          <span className="nxlabel">{t('fm.version')}</span>
+          <select value={version} onChange={(e) => setVersion(e.target.value as FmbeVersion)}>
+            {FMBE_VERSIONS.map((v) => <option key={v} value={v}>{t(`fm.v.${v}` as 'fm.v.standard')}</option>)}
+          </select>
+        </div>
+        <div className="nxrow">
+          <button onClick={() => attempt(() => { ctx.insertText(prerequisiteScript(tag, chainName, 100, version)); return `Inserted the chain (one repeating block and ${prerequisiteCommands(tag, version).length - 1} chain blocks)`; })}>{t('fm.insertChain')}</button>
+          <button onClick={() => attempt(() => runAll(prerequisiteCommands(tag, version)))}>{t('fm.runOnceNow')}</button>
+        </div>
+        <div className="nxhead">{t('fm.custom')}</div>
+        <textarea className="nxbox" rows={3} placeholder={t('fm.customHint')} value={custom} onChange={(e) => setCustom(e.target.value)} />
+        <div className="nxrow">
+          <button onClick={() => attempt(() => { ctx.insertText(commandsScript(parseCustomPrerequisite(custom), chainName)); return 'Inserted the pasted prerequisite as a chain'; })}>{t('fm.insertChain')}</button>
+          <button onClick={() => attempt(() => runAll(parseCustomPrerequisite(custom)))}>{t('fm.runOnceNow')}</button>
         </div>
       </Section>
 
@@ -143,7 +157,7 @@ export function FmbePanel({ ctx }: { ctx: PluginContext }) {
         <table>
           <thead><tr><th /><th>{t('fm.variable')}</th><th>{t('fm.value')}</th><th>{t('fm.unit')}</th></tr></thead>
           <tbody>
-            {VARIABLES.map((v) => (
+            {variablesFor(version).map((v) => (
               <tr key={v.name}>
                 <td><input type="checkbox" checked={!!enabled[v.name]} onChange={(e) => setEnabled({ ...enabled, [v.name]: e.target.checked })} /></td>
                 <td>v.{v.name}</td>

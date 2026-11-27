@@ -3,16 +3,11 @@ import type { Vec3 } from '../../language/types.ts';
 import { parseMolang, type Node } from '../../engine/molang.ts';
 import { parseExpression, parsePlayAnimation } from '../../engine/molang-commands.ts';
 import { splitTop } from '../../language/parser.ts';
+import { EX2D_PREREQ, EX3D_PREREQ, EXITEMS_PREREQ, type PrereqEntry } from './ex-data.ts';
 
 export const DEFAULT_TAG = 'wiki:fmbe';
 export const DEFAULT_SET_ANIMATION = 'animation.player.attack.positions';
 export const DEFAULT_SET_CONTROLLER = 'wiki:setvariable';
-
-interface PrereqEntry {
-  animation: string;
-  controller: string;
-  expression: string;
-}
 
 /** The 8 playanimation commands of the Bedrock Wiki "FMBE - A New Way to Create Display Entities" system. */
 export const PREREQ: PrereqEntry[] = [
@@ -49,20 +44,51 @@ function checkName(value: string, what: string): string {
 
 export const selectorFor = (tag: string) => `@e[tag=${checkName(tag, 'The tag')}]`;
 
-/** The 8 prerequisite commands (without a leading slash) aimed at entities carrying `tag`. */
-export function prerequisiteCommands(tag = DEFAULT_TAG): string[] {
+/** Which prerequisite: the Basic Edition (8 commands) or one of the three Advanced ("EX") display categories (5 commands each). */
+export type FmbeVersion = 'standard' | 'ex3d' | 'ex2d' | 'exitems';
+export const FMBE_VERSIONS: FmbeVersion[] = ['standard', 'ex3d', 'ex2d', 'exitems'];
+export const PREREQ_SETS: Record<FmbeVersion, PrereqEntry[]> = { standard: PREREQ, ex3d: EX3D_PREREQ, ex2d: EX2D_PREREQ, exitems: EXITEMS_PREREQ };
+export const isEx = (v: FmbeVersion) => v !== 'standard';
+
+/** The prerequisite commands (without a leading slash) aimed at entities carrying `tag`. */
+export function prerequisiteCommands(tag = DEFAULT_TAG, version: FmbeVersion = 'standard'): string[] {
   const sel = selectorFor(tag);
-  return PREREQ.map((p) => `playanimation ${sel} ${p.animation} none 0 "${p.expression}" ${p.controller}`);
+  const next = isEx(version) ? '_' : 'none';
+  return PREREQ_SETS[version].map((p) => `playanimation ${sel} ${p.animation} ${next} 0 "${p.expression}" ${p.controller}`);
 }
 
-/** A script chain that runs the prerequisite every tick: a repeating block followed by 7 chain blocks. */
-export function prerequisiteScript(tag = DEFAULT_TAG, chainName = 'fmbe_render', width = 100): string {
+/** A script chain made of the given commands: a repeating block followed by chain blocks. */
+export function commandsScript(commands: string[], chainName: string, width = 100): string {
   checkName(chainName, 'The chain name');
   const lines = [`chain ${chainName}:`, '    cb(mode=rep, power=always_on)'];
-  for (const c of prerequisiteCommands(tag)) lines.push(...wrapCommand(`    /${c}`, width));
+  for (const c of commands) lines.push(...wrapCommand(`    /${c}`, width));
   return lines.join('\n');
 }
 
+/** A script chain that runs the prerequisite every tick: a repeating block followed by chain blocks (7 for the basic edition, 4 for EX). */
+export function prerequisiteScript(tag = DEFAULT_TAG, chainName = 'fmbe_render', width = 100, version: FmbeVersion = 'standard'): string {
+  return commandsScript(prerequisiteCommands(tag, version), chainName, width);
+}
+
+/** The commands of a prerequisite the user pasted (one `playanimation` per line, with or without a slash, `#` comments allowed), checked one by one. */
+export function parseCustomPrerequisite(text: string): string[] {
+  const out: string[] = [];
+  text.split(/\r?\n/).forEach((raw, i) => {
+    const line = raw.trim();
+    if (!line || line.startsWith('#')) return;
+    const command = line.replace(/^\//, '').trim();
+    const tokens = splitTop(command, (c) => /\s/.test(c));
+    if (tokens[0]?.text !== 'playanimation') throw new Error(`Line ${i + 1}: only playanimation commands belong to a prerequisite`);
+    try {
+      parseExpression(parsePlayAnimation(tokens).expression);
+    } catch (e) {
+      throw new Error(`Line ${i + 1}: ${(e as Error).message}`);
+    }
+    out.push(command);
+  });
+  if (!out.length) throw new Error('Paste at least one playanimation command');
+  return out;
+}
 export interface FoxSpec {
   name: string;
   tag: string;
@@ -110,7 +136,7 @@ export function fillItemCommand(selector: string, item: string): string {
 export interface FmbeVariable {
   name: string;
   default: number;
-  group: 'position' | 'rotation' | 'scale' | 'base position';
+  group: 'position' | 'rotation' | 'scale' | 'base position' | 'extension';
   hint: string;
 }
 
@@ -129,6 +155,16 @@ export const VARIABLES: FmbeVariable[] = [
   { name: 'zbasepos', default: 0, group: 'base position', hint: '1/16 block, follows rotation' },
 ];
 
+/** The variables of the Advanced FMBE: no xzscale and yscale, three extension variables instead. */
+export const EX_VARIABLES: FmbeVariable[] = [
+  ...VARIABLES.filter((v) => v.name !== 'xzscale' && v.name !== 'yscale'),
+  { name: 'extend_scale', default: 1, group: 'extension', hint: 'stretches the block along the direction' },
+  { name: 'extend_xrot', default: -90, group: 'extension', hint: 'direction of the stretch, x rotation in degrees' },
+  { name: 'extend_yrot', default: 0, group: 'extension', hint: 'direction of the stretch, y rotation in degrees' },
+];
+
+export const variablesFor = (version: FmbeVersion): FmbeVariable[] => (isEx(version) ? EX_VARIABLES : VARIABLES);
+
 export interface TransformSpec {
   selector: string;
   values: Record<string, number>;
@@ -141,7 +177,7 @@ export function transformCommand(spec: TransformSpec): string {
   if (!spec.selector.trim()) throw new Error('The target selector is empty');
   const entries = Object.entries(spec.values);
   if (!entries.length) throw new Error('Tick at least one variable');
-  const known = new Set(VARIABLES.map((v) => v.name));
+  const known = new Set([...VARIABLES, ...EX_VARIABLES].map((v) => v.name));
   for (const [k, v] of entries) {
     if (!known.has(k)) throw new Error(`Unknown FMBE variable "${k}"`);
     if (!Number.isFinite(v)) throw new Error(`The value of ${k} is not a number`);
