@@ -8,7 +8,11 @@ export interface MappedLine {
 }
 
 /** Joins the physical lines of a logical line like logicalLines does, remembering where every character came from. */
-export function mapLogical(source: string, g: LogicalLine): MappedLine {
+let layoutCache: { source: string; lines: string[]; starts: number[] } | null = null;
+
+/** The physical lines of a script and where each starts; kept for the last script so that mapping every line stays linear. */
+function layoutOf(source: string) {
+  if (layoutCache?.source === source) return layoutCache;
   const lines = source.split('\n');
   const starts: number[] = [];
   let pos = 0;
@@ -16,6 +20,11 @@ export function mapLogical(source: string, g: LogicalLine): MappedLine {
     starts.push(pos);
     pos += l.length + 1;
   }
+  return (layoutCache = { source, lines, starts });
+}
+
+export function mapLogical(source: string, g: LogicalLine): MappedLine {
+  const { lines, starts } = layoutOf(source);
   const text: string[] = [];
   const offsets: number[] = [];
   let first = true;

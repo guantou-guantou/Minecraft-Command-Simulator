@@ -6,7 +6,7 @@ import { useLang, useT } from './I18n.tsx';
 import { gameText } from './gameText.ts';
 import { clockText, dayNumber, daytime } from '../engine/clock.ts';
 import { lintProgram } from '../engine/lint.ts';
-import { lintCommands } from '../language/cmdlint.ts';
+import { useCommandLint } from './useCommandLint.ts';
 import type { StructureTemplate } from '../engine/structure.ts';
 import { sceneFrom } from '../language/complete.ts';
 import { parse } from '../language/parser.ts';
@@ -113,7 +113,8 @@ export function DocView({ doc, active, host, layout, setLayout, setText, files, 
   }, [program, host]);
   const checked = useMemo(() => program.chains.filter((c) => !unchecked.has(c.name)), [program, unchecked]);
   const runChecked = (f: (name: string) => void) => () => checked.forEach((c) => f(c.name));
-  const diagnostics = useMemo(() => [...program.diagnostics, ...lintProgram(program), ...lintCommands(text)].sort((a, b) => a.line - b.line), [program, text]);
+  const commandLint = useCommandLint(text);
+  const diagnostics = useMemo(() => [...program.diagnostics, ...lintProgram(program), ...commandLint].sort((a, b) => a.line - b.line), [program, commandLint]);
   const spans = useMemo(() => diagnostics.flatMap((d) => (d.span ? [d.span] : [])), [diagnostics]);
   const scene = useMemo(() => sceneFrom(text, program, [...library.current.keys(), ...sim.world.structures.keys()]), [text, program, sim, rev]);
   const errLines = useMemo(() => new Set(diagnostics.map((d) => d.line)), [diagnostics]);

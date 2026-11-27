@@ -1,5 +1,7 @@
 import fs, { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads';
 import { parseArgs } from 'node:util';
 import { parse } from './language/parser.ts';
 import { lintCommands } from './language/cmdlint.ts';
@@ -9,14 +11,14 @@ import { lintProgram } from './engine/lint.ts';
 import { snapshot } from './engine/snapshot.ts';
 import type { SimEvent } from './engine/types.ts';
 import { exportAllCommands, exportAllManifest, exportCommands, exportFunctionFiles, exportManifest, functionWarning } from './export.ts';
-import { runTests } from './engine/testrun.ts';
+import { runTests, type TestResult } from './engine/testrun.ts';
 
 const USAGE = `mcsim: offline Minecraft Bedrock command simulator
 
 Usage:
   mcsim check  <file|-> [--json]
   mcsim run    <file|-> [chain...] [--chain name]... [--all] [--ticks N] [--command "/cmd"]... [--state] [--json]
-  mcsim test   <file|-> [--only a,b] [--json]
+  mcsim test   <file|-> [--only a,b] [--jobs N] [--json]
   mcsim export <file|-> [chain...] [--chain name]... [--format commands|manifest|functions] [--out dir]
 
   <file|-> is a .mcsim file, or - to read the script from standard input.
@@ -26,6 +28,30 @@ Legacy form (still supported):
   node src/cli.ts <file.mcsim> [chain] [--ticks N] [--export commands|manifest] | --test [--only a,b]`;
 
 const SUBCOMMANDS = new Set(['check', 'run', 'test', 'export']);
+
+/** A worker thread started by `--jobs`: runs the given tests of a script and sends the results back. */
+if (!isMainThread && workerData?.mcsimTests) {
+  const job = workerData.mcsimTests as { text: string; names: string[] };
+  parentPort!.postMessage(runTests(parse(job.text), undefined, new Set(job.names)));
+  process.exit(0);
+}
+
+/** Runs the tests in `jobs` worker threads (every test has its own simulation, so they do not depend on each other); the results come back in script order. */
+function runTestsParallel(text: string, names: string[], jobs: number): Promise<TestResult[]> {
+  const n = Math.min(jobs, names.length);
+  const groups = Array.from({ length: n }, (_, i) => names.filter((_name, k) => k % n === i));
+  return Promise.all(
+    groups.map(
+      (g) =>
+        new Promise<TestResult[]>((resolve, reject) => {
+          const w = new Worker(fileURLToPath(import.meta.url), { workerData: { mcsimTests: { text, names: g } } });
+          w.once('message', resolve);
+          w.once('error', reject);
+          w.once('exit', (code) => code && reject(new Error(`test worker exited with code ${code}`)));
+        }),
+    ),
+  ).then((all) => all.flat().sort((a, b) => names.indexOf(a.name) - names.indexOf(b.name)));
+}
 
 function fail(message: string, code = 2): never {
   console.error(message);
@@ -72,7 +98,7 @@ function subcommand(name: string, argv: string[]): never {
     allowPositionals: true,
     options: {
       json: { type: 'boolean' }, ticks: { type: 'string' }, chain: { type: 'string', multiple: true }, all: { type: 'boolean' },
-      command: { type: 'string', multiple: true }, state: { type: 'boolean' }, only: { type: 'string' }, format: { type: 'string' }, out: { type: 'string' },
+      command: { type: 'string', multiple: true }, state: { type: 'boolean' }, only: { type: 'string' }, format: { type: 'string' }, out: { type: 'string' }, jobs: { type: 'string' },
     },
   });
   const { text, label } = readSource(positionals[0]);
@@ -101,17 +127,26 @@ function subcommand(name: string, argv: string[]): never {
     const only = values.only ? new Set(values.only.split(',').map((n) => n.trim())) : undefined;
     const unknown = [...(only ?? [])].filter((n) => !program.tests.some((t) => t.name === n));
     if (unknown.length) fail(`No such test: ${unknown.join(', ')}`);
-    const results = runTests(program, undefined, only);
-    const failed = results.filter((r) => !r.passed).length;
-    if (values.json) json({ ok: failed === 0, total: results.length, passed: results.length - failed, failed, tests: results });
-    else {
-      for (const r of results) {
-        console.log(`${r.passed ? 'PASS' : 'FAIL'} ${r.name} (${r.checks} checks)`);
-        for (const f of r.failures) console.log(`  line ${f.line}: ${f.message}`);
+    const jobs = values.jobs === undefined ? 1 : Number(values.jobs);
+    if (!Number.isInteger(jobs) || jobs < 1) fail('--jobs must be a whole number of at least 1');
+    const names = program.tests.map((t) => t.name).filter((n) => !only || only.has(n));
+    const report = (results: TestResult[]): never => {
+      const failed = results.filter((r) => !r.passed).length;
+      if (values.json) json({ ok: failed === 0, total: results.length, passed: results.length - failed, failed, tests: results });
+      else {
+        for (const r of results) {
+          console.log(`${r.passed ? 'PASS' : 'FAIL'} ${r.name} (${r.checks} checks)`);
+          for (const f of r.failures) console.log(`  line ${f.line}: ${f.message}`);
+        }
+        console.log(results.length ? `${results.length - failed}/${results.length} tests passed` : 'no tests');
       }
-      console.log(results.length ? `${results.length - failed}/${results.length} tests passed` : 'no tests');
+      process.exit(failed ? 1 : 0);
+    };
+    if (jobs > 1 && names.length > 1) {
+      runTestsParallel(text, names, jobs).then(report, (e: Error) => fail(`test worker failed: ${e.message}`));
+      return undefined as never;
     }
-    process.exit(failed ? 1 : 0);
+    report(runTests(program, undefined, only));
   }
 
   if (name === 'export') {
@@ -162,7 +197,10 @@ if (first === '--help' || first === '-h' || first === 'help') {
   console.log(USAGE);
   process.exit(0);
 }
-if (first && SUBCOMMANDS.has(first)) subcommand(first, rest);
+if (first && SUBCOMMANDS.has(first)) {
+  subcommand(first, rest);
+  await new Promise(() => {});
+}
 
 const { values, positionals } = parseArgs({
   allowPositionals: true,

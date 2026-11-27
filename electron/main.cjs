@@ -415,6 +415,9 @@ function runSmoke() {
         setDoc(Array.from({ length: 200 }, (_, i) => 'line ' + i).join('\\n'), 0);
         await wait(200);
         const longDoc = cm.state.doc.lines === 200 && view().querySelectorAll('.cm-line').length > 0;
+        setDoc(['/nosuchcommand x'].concat(Array.from({ length: 4000 }, (_, i) => '# padding line number ' + i + ' of a long script')).join('\\n'), 0);
+        await wait(1500);
+        const bigLint = !!view().querySelector('.cm-errline');
         setDoc(['/say a \\\\', '    b', '/say c'].join('\\n'));
         await wait(150);
         const nums = [...view().querySelectorAll('.cm-lineNumbers .cm-gutterElement')].map((e) => e.textContent).slice(-3);
@@ -463,7 +466,7 @@ function runSmoke() {
         langSel.dispatchEvent(new Event('change', { bubbles: true }));
         await wait(300);
         const en = (view().querySelector('.toolbar')?.innerText ?? '').includes('Run once');
-        return { gridChanged, tabs, drawer, layoutBefore, layoutAfter: layoutOk(), editor: !!document.querySelector('.cm-editor'), zh, en, popupLabels, accepted, longDoc, nums, commented, searchOpen, hintShown, testsPanel, chainPicker };
+        return { gridChanged, tabs, drawer, layoutBefore, layoutAfter: layoutOk(), editor: !!document.querySelector('.cm-editor'), zh, en, popupLabels, accepted, longDoc, bigLint, nums, commented, searchOpen, hintShown, testsPanel, chainPicker };
         } catch (e) {
           return { error: String((e && e.stack) || e) };
         }
@@ -472,7 +475,7 @@ function runSmoke() {
       const ok =
         result.app && ui.editor && result.api === 'object' && !problems.length && !ui.error && ui.gridChanged && ui.tabs === 2 &&
         ui.zh && ui.en && ui.accepted && ui.popupLabels.some((t) => t.startsWith('gamemode')) && ui.drawer && ui.layoutBefore && ui.layoutAfter &&
-        ui.longDoc && ui.nums.join('|') === '1||2' && ui.commented && ui.searchOpen && ui.hintShown && ui.testsPanel && ui.chainPicker;
+        ui.longDoc && ui.bigLint && ui.nums.join('|') === '1||2' && ui.commented && ui.searchOpen && ui.hintShown && ui.testsPanel && ui.chainPicker;
       app.exit(ok ? 0 : 1);
     } catch (e) {
       console.log('SMOKE_FAIL ' + e.message);
