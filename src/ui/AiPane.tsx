@@ -5,6 +5,7 @@ import { buildSystemPrompt } from '../ai/prompt.ts';
 import { desktop, type AiSettings } from './desktop.ts';
 import { isChatDirty, type ChatState } from './docs.ts';
 import { useLang, useT } from './I18n.tsx';
+import { Markdown } from './Markdown.tsx';
 
 export interface ChatApi {
   chat: ChatState;
@@ -181,7 +182,7 @@ export function AiPane({ host, chatApi }: { host: AiHost; chatApi: ChatApi }) {
       ) : (
         splitReply(m.content).map((s, i) =>
           s.kind === 'text' ? (
-            <div key={i} className="aitext">{s.text}</div>
+            <Markdown key={i} text={s.text} />
           ) : (
             <div key={i} className="aicode">
               <div className="aibar">
