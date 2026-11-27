@@ -1,8 +1,9 @@
-const { app, BrowserWindow, Menu, dialog, ipcMain, screen } = require('electron');
+const { app, BrowserWindow, Menu, dialog, ipcMain, safeStorage, screen } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
 const { addRecent, atomicWrite, bdxFile, decodeStructureFile, decodeText, encodeText, pickFileArg, windowOptions, windowTitle } = require('./lib.cjs');
 const { tr } = require('./i18n.cjs');
+const aiCore = require('./ai-core.cjs');
 
 const DEV_URL = process.env.MC_SIM_DEV_URL || '';
 const SMOKE = process.env.MC_SIM_SMOKE === '1';
@@ -264,7 +265,46 @@ function registerIpc() {
     if (typeof message !== 'string' || !Array.isArray(buttons) || !buttons.length || !buttons.every((b) => typeof b === 'string')) return -1;
     return dialog.showMessageBoxSync(win, { type: 'warning', message, buttons, defaultId: 0, cancelId: buttons.length - 1, noLink: true });
   });
-  ipcMain.handle('app:confirm-discard', (_e, name) => {
+  const aiFile = () => path.join(app.getPath('userData'), 'ai-settings.json');
+  const aiCrypto = { isAvailable: () => safeStorage.isEncryptionAvailable(), encrypt: (s) => safeStorage.encryptString(s), decrypt: (b) => safeStorage.decryptString(b) };
+  const aiView = () => {
+    const { settings, hasStoredKey } = aiCore.loadSettings(fs, aiFile(), aiCrypto);
+    return { ...settings, hasKey: hasStoredKey, canEncrypt: aiCrypto.isAvailable() };
+  };
+  const aiRuns = new Map();
+  const aiSend = (payload) => {
+    if (win && !win.isDestroyed()) win.webContents.send('ai:event', payload);
+  };
+  const validMessages = (m) =>
+    Array.isArray(m) && m.length > 0 && m.length <= 200 && m.every((x) => x && ['system', 'user', 'assistant'].includes(x.role) && typeof x.content === 'string') && m.reduce((n, x) => n + x.content.length, 0) <= 2_000_000;
+  ipcMain.handle('ai:get-settings', () => aiView());
+  ipcMain.handle('ai:set-settings', (_e, change) => {
+    if (!change || typeof change !== 'object') return { error: 'Bad settings' };
+    try {
+      aiCore.saveSettings(fs, aiFile(), aiCrypto, atomicWrite, change);
+      return { settings: aiView() };
+    } catch (e) {
+      return { error: e.message };
+    }
+  });
+  ipcMain.handle('ai:chat', (_e, id, messages, opts) => {
+    if (typeof id !== 'string' || !validMessages(messages)) return { error: 'Bad request' };
+    const { settings, apiKey } = aiCore.loadSettings(fs, aiFile(), aiCrypto);
+    if (!settings.enabled) return { error: 'The AI assistant is switched off in the settings' };
+    if (!apiKey || !settings.model.trim()) return { error: 'Enter the model name and the API key in the settings first' };
+    const controller = new AbortController();
+    aiRuns.set(id, controller);
+    const test = !!opts?.test;
+    aiCore
+      .streamChat({ baseUrl: settings.baseUrl, apiKey, model: settings.model.trim(), messages, signal: controller.signal, maxTokens: test ? 8 : undefined, onDelta: (text) => aiSend({ id, type: 'delta', text }) })
+      .then((text) => aiSend({ id, type: 'done', text }))
+      .catch((e) => aiSend({ id, type: e.cancelled ? 'cancelled' : 'error', text: String(e.message || e) }))
+      .finally(() => aiRuns.delete(id));
+    return { started: true };
+  });
+  ipcMain.handle('ai:cancel', (_e, id) => {
+    aiRuns.get(id)?.abort();
+  });  ipcMain.handle('app:confirm-discard', (_e, name) => {
     const r = dialog.showMessageBoxSync(win, {
       type: 'warning',
       buttons: [T('discard'), T('cancel')],

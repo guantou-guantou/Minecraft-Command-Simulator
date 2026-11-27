@@ -4,6 +4,26 @@ export interface FileResult {
   eol: 'lf' | 'crlf';
 }
 
+export interface AiSettings {
+  enabled: boolean;
+  baseUrl: string;
+  model: string;
+  includeScript: boolean;
+  hasKey: boolean;
+  canEncrypt: boolean;
+}
+
+export interface AiMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
+export interface AiEvent {
+  id: string;
+  type: 'delta' | 'done' | 'error' | 'cancelled';
+  text: string;
+}
+
 export interface DesktopApi {
   version(): Promise<string>;
   launchFile(): Promise<FileResult | null>;
@@ -17,6 +37,13 @@ export interface DesktopApi {
   exportStructure(suggestedName: string, base64: string): Promise<string | null>;
   /** ase64 is the uncompressed BDX content; the main process adds the BD@ header and brotli compression. */
   exportBdx(suggestedName: string, base64: string): Promise<string | null>;
+  aiGetSettings(): Promise<AiSettings>;
+  /** `key`: undefined keeps the saved key, an empty string removes it. */
+  aiSetSettings(change: Partial<Omit<AiSettings, 'hasKey' | 'canEncrypt'>> & { key?: string }): Promise<{ settings?: AiSettings; error?: string }>;
+  /** Starts a streamed chat; the pieces arrive through onAiEvent. */
+  aiChat(id: string, messages: AiMessage[], opts?: { test?: boolean }): Promise<{ started?: boolean; error?: string }>;
+  aiCancel(id: string): Promise<void>;
+  onAiEvent(cb: (e: AiEvent) => void): () => void;
   /** Asks for a folder and writes the files (relative paths with slashes) into it; resolves to the folder, or null when cancelled. */
   exportFolder(files: { path: string; content: string }[]): Promise<string | null>;
   /** A warning box with the given buttons; resolves to the index of the one pressed (the last one is also what closing the box does). */

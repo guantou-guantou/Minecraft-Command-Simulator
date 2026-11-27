@@ -17,6 +17,15 @@ contextBridge.exposeInMainWorld('desktop', {
   importStructure: () => ipcRenderer.invoke('structure:import'),
   exportStructure: (suggestedName, base64) => ipcRenderer.invoke('structure:export', suggestedName, base64),
   exportBdx: (suggestedName, base64) => ipcRenderer.invoke('structure:export-bdx', suggestedName, base64),
+  aiGetSettings: () => ipcRenderer.invoke('ai:get-settings'),
+  aiSetSettings: (change) => ipcRenderer.invoke('ai:set-settings', change),
+  aiChat: (id, messages, opts) => ipcRenderer.invoke('ai:chat', id, messages, opts),
+  aiCancel: (id) => ipcRenderer.invoke('ai:cancel', id),
+  onAiEvent: (cb) => {
+    const listener = (_e, payload) => cb(payload);
+    ipcRenderer.on('ai:event', listener);
+    return () => ipcRenderer.removeListener('ai:event', listener);
+  },
   exportFolder: (files) => ipcRenderer.invoke('file:export-folder', files),
   choose: (message, buttons) => ipcRenderer.invoke('app:choose', message, buttons),
   confirmDiscard: (name) => ipcRenderer.invoke('app:confirm-discard', name),
