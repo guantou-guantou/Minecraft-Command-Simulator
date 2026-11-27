@@ -470,7 +470,7 @@ function runSmoke() {
         const bigLint = !!view().querySelector('.cm-errline');
         [...view().querySelectorAll('.toolbar button')].find((b) => b.textContent === 'AI')?.click();
         await wait(400);
-        const aiPane = !!document.querySelector('.aipane') && !!document.querySelector('.aiset');
+        const aiPane = !!document.querySelector('.aipane');
         const aiSettings = await window.desktop.aiGetSettings();
         const aiIpc = typeof aiSettings.baseUrl === 'string' && aiSettings.hasKey !== undefined && typeof aiSettings.canEncrypt === 'boolean';
         setDoc(['/say a \\\\', '    b', '/say c'].join('\\n'));

@@ -66,9 +66,8 @@ export function AiPane({ host, chatApi }: { host: AiHost; chatApi: ChatApi }) {
     });
   }, []);
 
-  useEffect(
-    () =>
-      desktop?.onAiEvent((e) => {
+  useEffect(() => {
+    const off = desktop?.onAiEvent((e) => {
         const { chatApi: api, stream: cur, testId } = live.current;
         if (e.id === testId) {
           live.current.testId = '';
@@ -84,10 +83,14 @@ export function AiPane({ host, chatApi }: { host: AiHost; chatApi: ChatApi }) {
           if (e.type === 'error') setNote({ ok: false, text: e.text });
           setStream(null);
         }
-      }),
-    [t],
-  );
-  useEffect(() => listEnd.current?.scrollIntoView?.({ block: 'end' }), [chatApi.chat.messages.length, stream?.text]);
+    });
+    return () => {
+      off?.();
+    };
+  }, [t]);
+  useEffect(() => {
+    listEnd.current?.scrollIntoView?.({ block: 'end' });
+  }, [chatApi.chat.messages.length, stream?.text]);
 
   const saveSettings = async () => {
     const r = await desktop?.aiSetSettings({ enabled: form.enabled, baseUrl: form.baseUrl, model: form.model, includeScript: form.includeScript, ...(form.key ? { key: form.key } : {}) });
