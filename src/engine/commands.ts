@@ -9,7 +9,7 @@ import { KNOWN_COMMANDS } from './known-commands.ts';
 import { scoreCondition } from './scoreboard.ts';
 import { resolveTargets } from './selector.ts';
 import { CommandError, label, type Ctx, type Entity, type Env } from './types.ts';
-import { AIR, fmtBlock } from './world.ts';
+import { AIR, COMMAND_BLOCK_MODE, fmtBlock } from './world.ts';
 
 export function executeCommand(src: string, ctx: Ctx, env: Env): number {
   const tokens = splitTop(src, (c) => /\s/.test(c));
@@ -348,7 +348,8 @@ export function setblock({ tokens, ctx, env }: { tokens: Token[]; ctx: Ctx; env:
     trace(env, ctx, `setblock ${fmt(p)}: block unchanged (${fmtBlock(old)})`, 'failed');
     return 0;
   }
-  env.world.setBlock(p, block.id, block.states);
+  if (old.cb && mode === 'replace' && COMMAND_BLOCK_MODE[block.id]) env.world.setBlockData(p, { id: block.id, states: block.states, cb: old.cb });
+  else env.world.setBlock(p, block.id, block.states);
   env.emit({ type: 'change', tick: env.tick, line: env.line, target: `block ${fmt(p)}`, what: `${fmtBlock(old)} -> ${fmtBlock(block)}` });
   return 1;
 }

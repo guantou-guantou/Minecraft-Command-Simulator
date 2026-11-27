@@ -99,6 +99,8 @@ export interface Chain {
   nodes: ChainNode[];
   /** For a chain placed with after=: the cell in front of the chain it follows, which stays empty until a block is cloned into it. */
   gapAt?: Vec3;
+  /** For a break chain: the index of the node that is switched between impulse and chain mode, for each level. */
+  toggles?: Record<number, number>;
 }
 
 export type Op = '==' | '!=' | '>=' | '<=' | '>' | '<';

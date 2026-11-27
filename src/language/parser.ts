@@ -1,6 +1,7 @@
 import {
   DEFAULT_REGION,
   DIRS,
+  DIR_ID,
   DIR_VEC,
   type BlockStates,
   type CbMode,
@@ -258,6 +259,15 @@ function resolvePlaceholders(prog: Program, diag: (line: number, message: string
   for (const c of prog.chains) {
     for (const n of c.nodes) {
       if (!n.command.includes('<<')) continue;
+      n.command = n.command.replace(/<<set:(\w+):(\d+):(\w+)>>/g, (all, name: string, level: string, block: string) => {
+        const ref = prog.chains.find((x) => x.name === name);
+        const node = ref?.toggles?.[Number(level)] !== undefined ? ref.nodes[ref.toggles[Number(level)]] : undefined;
+        if (!node?.pos) {
+          diag(n.line, `cannot place ${all}`);
+          return all;
+        }
+        return `${node.pos.join(' ')} ${block} ["facing_direction"=${DIR_ID[node.facing]}]`;
+      });
       n.command = n.command.replace(/<<(tpl|gap):(\w+)>>/g, (all, kind: string, name: string) => {
         const ref = prog.chains.find((x) => x.name === name);
         const p = kind === 'tpl' ? ref?.nodes[0]?.pos : ref?.gapAt;
@@ -369,12 +379,14 @@ export function parse(input: string): Program {
         const first = !prev;
         const gate = first && gateChains.has(current);
         const mode: CbMode = pending?.spec.mode ?? (first ? (gate ? 'rep' : fromGap.has(current) ? 'cha' : 'imp') : 'cha');
+        const toggle = entry.toggle;
         const cb: CommandBlockSpec = {
           mode,
           conditional: false,
           power: mode === 'cha' || (gate && mode === 'rep') ? 'always_on' : 'needs_redstone',
           delay: 0,
           ...pending?.spec,
+          ...(toggle !== undefined ? { mode: 'imp' as CbMode, power: 'always_on' as CbPower } : {}),
         };
         const facing: Dir = pending?.facing ?? prev?.facing ?? current.facing;
         const pos: Vec3 | null = !current.positioned
@@ -384,8 +396,10 @@ export function parse(input: string): Program {
             : [...current.position];
         pending = null;
         if (first && cb.conditional) diag(line, 'The first command block of a chain cannot be conditional');
-        if (!first && cb.mode !== 'cha') diag(line, 'Only the first block of a chain can use mode=imp or mode=rep');
+        if (toggle !== undefined && cb.conditional) diag(line, 'The first command block of run: cannot be conditional');
+        if (!first && cb.mode !== 'cha' && toggle === undefined) diag(line, 'Only the first block of a chain can use mode=imp or mode=rep');
         current.nodes.push({ line, command, cb, facing, pos });
+        if (toggle !== undefined) (current.toggles ??= {})[toggle] = current.nodes.length - 1;
         return;
       }
 
