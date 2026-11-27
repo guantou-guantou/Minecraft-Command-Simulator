@@ -4,6 +4,8 @@ export interface FileResult {
   eol: 'lf' | 'crlf';
 }
 
+import type { AiMessage } from '../ai/messages.ts';
+
 export interface AiSettings {
   enabled: boolean;
   baseUrl: string;
@@ -13,10 +15,7 @@ export interface AiSettings {
   canEncrypt: boolean;
 }
 
-export interface AiMessage {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
-}
+export type { AiMessage };
 
 export interface AiEvent {
   id: string;
@@ -44,6 +43,9 @@ export interface DesktopApi {
   aiChat(id: string, messages: AiMessage[], opts?: { test?: boolean }): Promise<{ started?: boolean; error?: string }>;
   aiCancel(id: string): Promise<void>;
   onAiEvent(cb: (e: AiEvent) => void): () => void;
+  /** Asks where to save a conversation (.mcchat); resolves to the path, or null when cancelled. */
+  chatSaveAs(suggestedName: string, content: string): Promise<string | null>;
+  chatOpen(): Promise<{ path: string; content: string } | null>;
   /** Asks for a folder and writes the files (relative paths with slashes) into it; resolves to the folder, or null when cancelled. */
   exportFolder(files: { path: string; content: string }[]): Promise<string | null>;
   /** A warning box with the given buttons; resolves to the index of the one pressed (the last one is also what closing the box does). */

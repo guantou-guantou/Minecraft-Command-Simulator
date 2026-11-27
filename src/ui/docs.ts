@@ -1,3 +1,4 @@
+import { serializeChat, type ChatMessage } from '../ai/messages.ts';
 import { baseName } from './desktop.ts';
 
 export interface Doc {
@@ -10,6 +11,15 @@ export interface Doc {
   untitled: number;
   /** Line ending of the file on disk; the editor itself always uses LF. */
   eol: 'lf' | 'crlf';
+  /** The AI conversation that belongs to this script; kept in a .mcchat file like a project file. */
+  chat?: ChatState;
+}
+
+export interface ChatState {
+  messages: ChatMessage[];
+  path: string | null;
+  /** The serialized messages as they were last saved or opened; the conversation is unsaved when they differ. */
+  saved: string;
 }
 
 export interface Docs {
@@ -27,6 +37,11 @@ export interface OpenedFile {
 }
 
 export const isDirty = (d: Doc) => d.text !== d.savedText;
+export const emptyChat = (): ChatState => ({ messages: [], path: null, saved: serializeChat([]) });
+export const chatOf = (d: Doc): ChatState => d.chat ?? emptyChat();
+export const isChatDirty = (d: Doc) => !!d.chat && serializeChat(d.chat.messages) !== d.chat.saved;
+/** The script or its conversation has unsaved changes. */
+export const isUnsaved = (d: Doc) => isDirty(d) || isChatDirty(d);
 export const isPristine = (d: Doc) => d.path === null && d.fileName === null && !isDirty(d);
 export const docName = (d: Doc) => (d.path ? baseName(d.path) : (d.fileName ?? `Untitled-${d.untitled}.mcsim`));
 export const activeDoc = (s: Docs) => s.docs.find((d) => d.id === s.activeId) ?? s.docs[0];
@@ -99,7 +114,19 @@ export function moveDoc(s: Docs, id: number, toIndex: number): Docs {
 
 /** The label the window uses when asking about unsaved changes. */
 export function dirtyLabel(s: Docs): { dirty: boolean; name: string } {
-  const dirty = s.docs.filter(isDirty);
+  const dirty = s.docs.filter(isUnsaved);
   if (dirty.length > 1) return { dirty: true, name: `${dirty.length} documents` };
   return { dirty: dirty.length === 1, name: docName(dirty[0] ?? activeDoc(s)) };
+}
+
+/** Replaces the conversation of a tab; path and saved change only when the conversation was just saved or opened. */
+export function setChat(s: Docs, id: number, messages: ChatMessage[], saved?: { path: string | null; text: string }): Docs {
+  return {
+    ...s,
+    docs: s.docs.map((d) => {
+      if (d.id !== id) return d;
+      const cur = chatOf(d);
+      return { ...d, chat: { messages, path: saved ? saved.path : cur.path, saved: saved ? saved.text : cur.saved } };
+    }),
+  };
 }

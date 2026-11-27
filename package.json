@@ -1,7 +1,7 @@
 {
     "name": "mc-command-sim",
     "productName": "MC Command Simulator",
-    "version": "0.3.3",
+    "version": "0.4.0",
     "description": "Offline simulator for Minecraft Bedrock commands",
     "author": "MC Command Simulator",
     "private": true,
@@ -18,7 +18,7 @@
         "demo": "node src/cli.ts examples/demo.mcsim",
         "ids:gen": "node scripts/gen-ids.mjs",
         "cli:build": "vite build --config vite.cli.config.ts",
-    "ai:doc": "node scripts/gen-ai-doc.ts",
+        "ai:doc": "node scripts/gen-ai-doc.ts",
         "desktop": "vite build && electron .",
         "desktop:dir": "vite build && electron-builder --win dir",
         "desktop:dist": "vite build && electron-builder --win"

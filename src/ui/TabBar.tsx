@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useLang, useT } from './I18n.tsx';
 import type { Lang } from './i18n.ts';
-import { docName, isDirty, type Doc } from './docs.ts';
+import { docName, isUnsaved, type Doc } from './docs.ts';
 
 interface Props {
   docs: Doc[];
@@ -55,7 +55,7 @@ export function TabBar({ docs, activeId, onSelect, onClose, onNew, onMove }: Pro
           }}
         >
           <span className="tabname">{docName(d)}</span>
-          {isDirty(d) && <span className="dot" title={t('tab.unsaved')}>●</span>}
+          {isUnsaved(d) && <span className="dot" title={t('tab.unsaved')}>●</span>}
           <button
             className="tabclose"
             title={t('tab.close')}

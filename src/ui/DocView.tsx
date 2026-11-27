@@ -7,6 +7,7 @@ import { gameText } from './gameText.ts';
 import { clockText, dayNumber, daytime } from '../engine/clock.ts';
 import { lintProgram } from '../engine/lint.ts';
 import { useCommandLint } from './useCommandLint.ts';
+import { AiPane, type AiHost, type ChatApi } from './AiPane.tsx';
 import type { StructureTemplate } from '../engine/structure.ts';
 import { sceneFrom } from '../language/complete.ts';
 import { parse } from '../language/parser.ts';
@@ -38,6 +39,8 @@ export interface ViewActions {
   reset(): void;
 }
 
+export type { ChatApi };
+
 export interface FileActions {
   newDoc(): void;
   /** Opens generated text in a new, unsaved tab. */
@@ -56,6 +59,7 @@ interface Props {
   setLayout: (l: Layout) => void;
   setText: (text: string) => void;
   files: FileActions;
+  chatApi: ChatApi;
   register: (id: number, actions: ViewActions) => void;
 }
 
@@ -74,7 +78,7 @@ const DIFF_KEY = { peaceful: 'diff.peaceful', easy: 'diff.easy', normal: 'diff.n
 
 const fmtPos = (p: number[]) => p.map((n) => +n.toFixed(2)).join(', ');
 
-export function DocView({ doc, active, host, layout, setLayout, setText, files, register }: Props) {
+export function DocView({ doc, active, host, layout, setLayout, setText, files, chatApi, register }: Props) {
   const t = useT();
   const text = doc.text;
   const [unchecked, setUnchecked] = useState<Set<string>>(new Set());
@@ -202,6 +206,36 @@ export function DocView({ doc, active, host, layout, setLayout, setText, files, 
   const size = (el: HTMLElement | null, axis: 'width' | 'height') => el?.getBoundingClientRect()[axis] ?? 0;
   const mainWidth = () => size(mainRef.current, 'width') || 1200;
   const panel = host.panels.find((p) => p.id === panelId);
+  const aiOpen = panelId === 'ai';
+  const aiHost: AiHost = {
+    scriptText: text,
+    selection: () => {
+      const v = editor.current?.view;
+      const s = v?.state.selection.main;
+      if (!v || !s || s.empty) return null;
+      const a = v.state.doc.lineAt(s.from);
+      const b = v.state.doc.lineAt(s.to);
+      return { text: v.state.sliceDoc(s.from, s.to), fromLine: a.number, toLine: s.to === b.from && b.number > a.number ? b.number - 1 : b.number };
+    },
+    range: () => {
+      const s = editor.current?.view?.state.selection.main;
+      return { from: s?.from ?? text.length, to: s?.to ?? text.length };
+    },
+    replace: (from, to, insert) => {
+      const v = editor.current?.view;
+      if (!v) return;
+      v.dispatch({ changes: { from, to, insert }, selection: { anchor: from + insert.length }, scrollIntoView: true });
+      v.focus();
+    },
+    diagnostics: diagnostics.slice(0, 50).map((d) => ({ line: d.line, message: d.message })),
+    goto: (line) => {
+      const v = editor.current?.view;
+      if (!v || line < 1 || line > v.state.doc.lines) return;
+      const l = v.state.doc.line(line);
+      v.dispatch({ selection: { anchor: l.from, head: l.to }, effects: EditorView.scrollIntoView(l.from, { y: 'center' }) });
+      v.focus();
+    },
+  };
 
   return (
     <div className="docview" ref={docRef} style={{ display: active ? 'flex' : 'none' }}>
@@ -230,6 +264,7 @@ export function DocView({ doc, active, host, layout, setLayout, setText, files, 
         {host.panels.map((p) => (
           <button key={p.id} className={panelId === p.id ? 'on' : ''} onClick={() => setPanelId(panelId === p.id ? null : p.id)}>{p.title}</button>
         ))}
+        <button className={aiOpen ? 'on' : ''} onClick={() => setPanelId(aiOpen ? null : 'ai')}>{t('ai.title')}</button>
         <span className="sep" />
         <button onClick={files.newDoc}>{t('tb.new')}</button>
         <button onClick={files.open}>{t('tb.open')}</button>
@@ -370,7 +405,7 @@ export function DocView({ doc, active, host, layout, setLayout, setText, files, 
           </div>
         </div>
 
-        {panel && (
+        {(panel || aiOpen) && (
           <>
             <Splitter
               dir="col"
@@ -383,9 +418,9 @@ export function DocView({ doc, active, host, layout, setLayout, setText, files, 
               onReset={() => setLayout({ ...layout, drawer: DEFAULT_LAYOUT.drawer })}
             />
             <div className="drawer" ref={drawerRef} style={{ flex: `0 1 ${layout.drawer}px`, minWidth: MIN.drawer }}>
-              <h3>{panel.title}<button className="close" onClick={() => setPanelId(null)}>x</button></h3>
+              <h3>{aiOpen ? t('ai.title') : panel?.title}<button className="close" onClick={() => setPanelId(null)}>x</button></h3>
               <div className="drawerbody">
-                {panel.render({ sim, refresh, program, jump, testSelection: { unchecked: uncheckedTests, set: setUncheckedTests }, openAsNewDocument: files.newDocWithText, panelState: panelState.current, newSim: () => { const s = new Simulation(program); s.library = library.current; host.apply(s); return s; }, insertText: (t) => setText(`${text.replace(/\s*$/, '')}\n${t}\n`) })}
+                {aiOpen ? <AiPane host={aiHost} chatApi={chatApi} /> : panel?.render({ sim, refresh, program, jump, testSelection: { unchecked: uncheckedTests, set: setUncheckedTests }, openAsNewDocument: files.newDocWithText, panelState: panelState.current, newSim: () => { const s = new Simulation(program); s.library = library.current; host.apply(s); return s; }, insertText: (t) => setText(`${text.replace(/\s*$/, '')}\n${t}\n`) })}
               </div>
             </div>
           </>

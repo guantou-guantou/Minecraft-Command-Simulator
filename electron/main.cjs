@@ -304,6 +304,16 @@ function registerIpc() {
   });
   ipcMain.handle('ai:cancel', (_e, id) => {
     aiRuns.get(id)?.abort();
+  });  ipcMain.handle('chat:save-as', (_e, suggested, content) => saveDialog(suggested, content, [{ name: 'AI conversation', extensions: ['mcchat'] }, { name: 'All files', extensions: ['*'] }], false, 'lf'));
+  ipcMain.handle('chat:open', async () => {
+    const r = await dialog.showOpenDialog(win, { properties: ['openFile'], filters: [{ name: 'AI conversation', extensions: ['mcchat'] }, { name: 'All files', extensions: ['*'] }] });
+    if (r.canceled || !r.filePaths[0]) return null;
+    try {
+      return { path: r.filePaths[0], content: fs.readFileSync(r.filePaths[0], 'utf8') };
+    } catch (e) {
+      dialog.showErrorBox(T('cannotOpen'), e.message);
+      return null;
+    }
   });  ipcMain.handle('app:confirm-discard', (_e, name) => {
     const r = dialog.showMessageBoxSync(win, {
       type: 'warning',
@@ -458,6 +468,11 @@ function runSmoke() {
         setDoc(['/nosuchcommand x'].concat(Array.from({ length: 4000 }, (_, i) => '# padding line number ' + i + ' of a long script')).join('\\n'), 0);
         await wait(1500);
         const bigLint = !!view().querySelector('.cm-errline');
+        [...view().querySelectorAll('.toolbar button')].find((b) => b.textContent === 'AI')?.click();
+        await wait(400);
+        const aiPane = !!document.querySelector('.aipane') && !!document.querySelector('.aiset');
+        const aiSettings = await window.desktop.aiGetSettings();
+        const aiIpc = typeof aiSettings.baseUrl === 'string' && aiSettings.hasKey !== undefined && typeof aiSettings.canEncrypt === 'boolean';
         setDoc(['/say a \\\\', '    b', '/say c'].join('\\n'));
         await wait(150);
         const nums = [...view().querySelectorAll('.cm-lineNumbers .cm-gutterElement')].map((e) => e.textContent).slice(-3);
@@ -506,7 +521,7 @@ function runSmoke() {
         langSel.dispatchEvent(new Event('change', { bubbles: true }));
         await wait(300);
         const en = (view().querySelector('.toolbar')?.innerText ?? '').includes('Run once');
-        return { gridChanged, tabs, drawer, layoutBefore, layoutAfter: layoutOk(), editor: !!document.querySelector('.cm-editor'), zh, en, popupLabels, accepted, longDoc, bigLint, nums, commented, searchOpen, hintShown, testsPanel, chainPicker };
+        return { gridChanged, tabs, drawer, layoutBefore, layoutAfter: layoutOk(), editor: !!document.querySelector('.cm-editor'), zh, en, popupLabels, accepted, longDoc, bigLint, aiPane, aiIpc, nums, commented, searchOpen, hintShown, testsPanel, chainPicker };
         } catch (e) {
           return { error: String((e && e.stack) || e) };
         }
@@ -515,7 +530,7 @@ function runSmoke() {
       const ok =
         result.app && ui.editor && result.api === 'object' && !problems.length && !ui.error && ui.gridChanged && ui.tabs === 2 &&
         ui.zh && ui.en && ui.accepted && ui.popupLabels.some((t) => t.startsWith('gamemode')) && ui.drawer && ui.layoutBefore && ui.layoutAfter &&
-        ui.longDoc && ui.bigLint && ui.nums.join('|') === '1||2' && ui.commented && ui.searchOpen && ui.hintShown && ui.testsPanel && ui.chainPicker;
+        ui.longDoc && ui.bigLint && ui.aiPane && ui.aiIpc && ui.nums.join('|') === '1||2' && ui.commented && ui.searchOpen && ui.hintShown && ui.testsPanel && ui.chainPicker;
       app.exit(ok ? 0 : 1);
     } catch (e) {
       console.log('SMOKE_FAIL ' + e.message);

@@ -26,6 +26,8 @@ contextBridge.exposeInMainWorld('desktop', {
     ipcRenderer.on('ai:event', listener);
     return () => ipcRenderer.removeListener('ai:event', listener);
   },
+  chatSaveAs: (suggestedName, content) => ipcRenderer.invoke('chat:save-as', suggestedName, content),
+  chatOpen: () => ipcRenderer.invoke('chat:open'),
   exportFolder: (files) => ipcRenderer.invoke('file:export-folder', files),
   choose: (message, buttons) => ipcRenderer.invoke('app:choose', message, buttons),
   confirmDiscard: (name) => ipcRenderer.invoke('app:confirm-discard', name),

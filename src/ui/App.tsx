@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createHost } from '../plugins/builtin.ts';
-import { DocView, type FileActions, type ViewActions } from './DocView.tsx';
-import { desktop, type DesktopApi } from './desktop.ts';
+import { DocView, type ChatApi, type FileActions, type ViewActions } from './DocView.tsx';
+import { baseName, desktop, type DesktopApi } from './desktop.ts';
 import {
-  activate, activeDoc, addDoc, addScriptDoc, closeDoc, cycle, dirtyLabel, docName, initialDocs, isDirty, markSaved, moveDoc, openFile, setText,
+  activate, activeDoc, addDoc, addScriptDoc, chatOf, closeDoc, cycle, dirtyLabel, docName, initialDocs, isChatDirty, isDirty, isUnsaved, markSaved, moveDoc, openFile, setChat, setText,
   type Docs,
 } from './docs.ts';
+import { parseChat, serializeChat, type ChatMessage } from '../ai/messages.ts';
 import { loadLayout, saveLayout, type Layout } from './layout.ts';
 import { TabBar } from './TabBar.tsx';
 
@@ -45,10 +46,32 @@ function Workspace({ d }: { d: DesktopApi }) {
     return true;
   };
 
+  const saveChat = async (id: number, as = false): Promise<boolean> => {
+    const doc = sRef.current.docs.find((x) => x.id === id);
+    if (!doc) return false;
+    const chat = chatOf(doc);
+    const content = serializeChat(chat.messages);
+    const p = chat.path && !as ? await d.saveFile(chat.path, content, 'lf') : await d.chatSaveAs(chat.path ? baseName(chat.path) : `.mcchat`, content);
+    if (!p) return false;
+    setS((prev) => setChat(prev, id, chatOf(prev.docs.find((x) => x.id === id) ?? doc).messages, { path: p, text: content }));
+    return true;
+  };
+
+  const openChat = async (id: number) => {
+    const f = await d.chatOpen();
+    if (!f) return;
+    try {
+      const messages = parseChat(f.content);
+      setS((prev) => setChat(prev, id, messages, { path: f.path, text: serializeChat(messages) }));
+    } catch (e) {
+      await d.choose((e as Error).message, ['OK']);
+    }
+  };
+
   const closeTab = async (id: number) => {
     const doc = sRef.current.docs.find((x) => x.id === id);
     if (!doc) return;
-    if (isDirty(doc) && !(await d.confirmDiscard(docName(doc)))) return;
+    if (isUnsaved(doc) && !(await d.confirmDiscard(docName(doc)))) return;
     viewActions.current.delete(id);
     setS((prev) => closeDoc(prev, id, NEW_TEXT));
   };
@@ -77,8 +100,8 @@ function Workspace({ d }: { d: DesktopApi }) {
     tick20: view('tick20'),
     reset: view('reset'),
   };
-  const latest = useRef({ actions, openExternal, saveDoc });
-  latest.current = { actions, openExternal, saveDoc };
+  const latest = useRef({ actions, openExternal, saveDoc, saveChat });
+  latest.current = { actions, openExternal, saveDoc, saveChat };
 
   useEffect(() => {
     const offs = [
@@ -86,8 +109,9 @@ function Workspace({ d }: { d: DesktopApi }) {
       d.onOpenRecent((p) => void latest.current.openExternal(p)),
       d.onOpenExternal((p) => void latest.current.openExternal(p)),
       d.onSaveAndClose(async () => {
-        for (const doc of sRef.current.docs.filter(isDirty)) {
-          if (!(await latest.current.saveDoc(doc.id))) return;
+        for (const doc of sRef.current.docs.filter(isUnsaved)) {
+          if (isDirty(doc) && !(await latest.current.saveDoc(doc.id))) return;
+          if (isChatDirty(doc) && !(await latest.current.saveChat(doc.id))) return;
         }
         await d.forceClose();
       }),
@@ -104,6 +128,14 @@ function Workspace({ d }: { d: DesktopApi }) {
     saveAs: () => void actions.saveAs(),
     exportText: (name, content) => void d.exportText(name, content),
   };
+
+  const chatApiFor = (doc: (typeof s.docs)[number]): ChatApi => ({
+    chat: chatOf(doc),
+    set: (messages: ChatMessage[]) => setS((prev) => setChat(prev, doc.id, messages)),
+    save: () => saveChat(doc.id),
+    saveAs: () => saveChat(doc.id, true),
+    open: () => openChat(doc.id),
+  });
 
   const register = useCallback((id: number, a: ViewActions) => {
     viewActions.current.set(id, a);
@@ -129,6 +161,7 @@ function Workspace({ d }: { d: DesktopApi }) {
           setLayout={setLayout}
           setText={(text) => setS((prev) => setText(prev, doc.id, text))}
           files={files}
+          chatApi={chatApiFor(doc)}
           register={register}
         />
       ))}
