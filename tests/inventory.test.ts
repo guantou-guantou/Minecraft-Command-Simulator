@@ -74,7 +74,7 @@ test('give: stacks merge, hotbar fills first, overflow is reported', () => {
   assert.equal(run(s, '/give alice diamond_sword'), true);
   assert.ok(s.events.some((e) => e.type === 'trace' && e.status === 'unimplemented' && /inventory full/.test(e.message)));
   assert.equal(run(s, '/give @e[name=stand] apple'), false);
-  assert.equal(run(s, '/give alice air'), false);
+  assert.equal(run(s, '/give alice air'), true);
   assert.equal(run(s, '/give alice apple 0'), false);
   assert.equal(run(s, '/give alice apple 1 0 [1]'), false);
   assert.equal(run(s, '/give @a[name=none] apple'), false);
@@ -196,4 +196,18 @@ test('entities keep inventories across reset', () => {
   run(s, '/give alice diamond 3');
   s.reset();
   assert.deepEqual(slots(s, 'alice'), { 'slot.hotbar:0': '1xapple' });
+});
+
+test('give air succeeds with the game messages and changes nothing', () => {
+  const s = new Simulation(parse('alice = ent(type=player, pos=(0, 0, 0), name=alice)\nbob = ent(type=player, pos=(1, 0, 0), name=bob)\n'));
+  const before = JSON.stringify(s.world.entities[0].items);
+  assert.equal(s.runCommand('/give alice air 5', null, [0, 0, 0]), true);
+  assert.equal(JSON.stringify(s.world.entities[0].items), before);
+  const chats = () => s.events.flatMap((e) => (e.type === 'chat' ? [{ text: e.text, to: e.to }] : []));
+  assert.deepEqual(chats(), [{ text: 'Gave 5 Air to alice', to: undefined }, { text: 'You were given 5 Air', to: 'alice' }]);
+  s.events.length = 0;
+  s.runCommand('/gamerule sendcommandfeedback false', null, [0, 0, 0]);
+  s.events.length = 0;
+  s.runCommand('/give bob air', null, [0, 0, 0]);
+  assert.deepEqual(chats(), [{ text: 'You were given 1 Air', to: 'bob' }]);
 });

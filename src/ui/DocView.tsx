@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { emptyHistory, loadHistory, newer, older, remember, saveHistory } from './termHistory.ts';
 import { loadHintMode, saveHintMode, type HintMode } from './hints.ts';
 import { MAX_TPS, MIN_TPS, loadTps, sanitizeTps, saveTps, ticksDue } from './tps.ts';
-import { useT } from './I18n.tsx';
+import { useLang, useT } from './I18n.tsx';
+import { gameText } from './gameText.ts';
 import { clockText, dayNumber, daytime } from '../engine/clock.ts';
 import { lintProgram } from '../engine/lint.ts';
 import { lintCommands } from '../language/cmdlint.ts';
@@ -79,7 +81,9 @@ export function DocView({ doc, active, host, layout, setLayout, setText, files, 
   const [tps, setTps] = useState(loadTps);
   const [curLine, setCurLine] = useState(0);
   const [rev, bump] = useState(0);
+  const [lang] = useLang();
   const [termText, setTermText] = useState('');
+  const termHist = useRef(emptyHistory(loadHistory()));
   const [execId, setExecId] = useState('');
   const [sel, setSel] = useState<Selection>(null);
   const [softWrap, setSoftWrap] = useState(true);
@@ -183,6 +187,8 @@ export function DocView({ doc, active, host, layout, setLayout, setText, files, 
   const submitTerm = () => {
     const t = termText.trim();
     if (!t) return;
+    termHist.current = remember(termHist.current, t);
+    saveHistory(termHist.current.items);
     sim.events.push({ type: 'chat', kind: 'system', tick: sim.tick, line: 0, sender: null, text: `> ${t}` });
     if (t.startsWith('/')) sim.runCommand(t, executor, executor ? [...executor.pos] : [0, 0, 0]);
     else sim.sendChat(t, executor);
@@ -403,7 +409,7 @@ export function DocView({ doc, active, host, layout, setLayout, setText, files, 
             ) : (
               <div key={i} className={`chat ${c.kind}`} onClick={() => jump(c.line)}>
                 {c.kind === 'say' || c.to ? `${c.to ? `(to ${c.to}) ` : ''}${c.sender === null && c.to ? '' : `[${c.sender ?? '@'}] `}` : ''}
-                <McText text={c.text} />
+                <McText text={c.kind === 'system' || c.kind === 'error' ? gameText(c.text, lang) : c.text} />
               </div>
             ),
           )}
@@ -418,7 +424,15 @@ export function DocView({ doc, active, host, layout, setLayout, setText, files, 
             placeholder={t('term.placeholder')}
             value={termText}
             onChange={(e) => setTermText(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && submitTerm()}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') submitTerm();
+              else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                e.preventDefault();
+                const r = (e.key === 'ArrowUp' ? older : newer)(termHist.current, termText);
+                termHist.current = r.history;
+                setTermText(r.text);
+              }
+            }}
           />
           <button onClick={submitTerm}>{t('term.send')}</button>
         </div>

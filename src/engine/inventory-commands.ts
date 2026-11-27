@@ -50,7 +50,7 @@ function report(env: Env, who: string, changes: SlotChange[]): void {
 
 export function give({ src, tokens, ctx, env }: Cmd): number {
   if (!tokens[2]) throw syntax('Usage: give <player> <item> [amount] [data] [components]');
-  const id = itemId(tokens[2]);
+  const id = normalizeId(tokens[2].text);
   const count = intTok(tokens[3], 'amount', 1);
   const data = intTok(tokens[4], 'data', 0);
   if (count < 1 || count > MAX_ITEM_COUNT) throw failed(`amount must be between 1 and ${MAX_ITEM_COUNT}`);
@@ -61,12 +61,18 @@ export function give({ src, tokens, ctx, env }: Cmd): number {
     trace(env, ctx, `give ${tokens[1].text}: no player matches`, 'no_targets');
     return 0;
   }
+  const shown = id.replace(/^minecraft:/, '').split('_').map((w) => w[0].toUpperCase() + w.slice(1)).join(' ');
   for (const p of targets) {
-    const { leftover, changes } = giveTo(p, item);
-    if (changes.length) report(env, label(p), changes);
-    if (leftover > 0) {
-      trace(env, ctx, `${label(p)}: inventory full, ${leftover} item(s) would drop as an item entity (not simulated)`, 'unimplemented');
+    const name = p.name ?? label(p);
+    if (id !== 'minecraft:air') {
+      const { leftover, changes } = giveTo(p, item);
+      if (changes.length) report(env, label(p), changes);
+      if (leftover > 0) {
+        trace(env, ctx, `${label(p)}: inventory full, ${leftover} item(s) would drop as an item entity (not simulated)`, 'unimplemented');
+      }
     }
+    if (env.world.gamerules.sendcommandfeedback !== false) env.emit({ type: 'chat', kind: 'system', tick: env.tick, line: env.line, sender: null, text: `Gave ${count} ${shown} to ${name}` });
+    env.emit({ type: 'chat', kind: 'system', tick: env.tick, line: env.line, sender: null, to: name, text: `You were given ${count} ${shown}` });
   }
   return targets.length;
 }

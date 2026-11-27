@@ -13,7 +13,7 @@ export type G =
   | { k: 'seq'; xs: G[] }
   | { k: 'alt'; xs: G[] }
   | { k: 'opt'; x: G }
-  | { k: 'lazy'; f: () => G };
+  | { k: 'lazy'; f: () => G; slash?: boolean };
 
 export type Leaf = Extract<G, { k: 'lit' | 'kw' | 'val' | 'rest' }>;
 
@@ -37,7 +37,7 @@ const itemTail = S(V('item', 'item'), O(S(int('amount'), O(S(int('data'), O(R('c
 const execute: () => G = () => S(L('execute'), chain());
 const chain = (): G =>
   A(
-    S(L('run'), { k: 'lazy', f: anyCommand }),
+    S(L('run'), { k: 'lazy', f: anyCommand, slash: true }),
     S(
       A(
         S(L('as'), target()),
@@ -315,7 +315,8 @@ function walk(g: G, t: string[], i: number, expect: Leaf[], k: (i: number) => vo
       walk(g.x, t, i, expect, k);
       return;
     case 'lazy':
-      walk(g.f(), t, i, expect, k);
+      if (g.slash && t[i]?.length > 1 && t[i].startsWith('/')) walk(g.f(), t.map((w, n) => (n === i ? w.slice(1) : w)), i, expect, k);
+      else walk(g.f(), t, i, expect, k);
   }
 }
 

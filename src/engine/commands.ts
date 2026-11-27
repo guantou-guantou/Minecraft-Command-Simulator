@@ -58,7 +58,7 @@ function executeFrom(src: string, tokens: Token[], i: number, ctx: Ctx, env: Env
     case 'run': {
       const next = tokens[i + 1];
       if (!next) throw syntax('execute run: missing command');
-      return executeCommand(src.slice(next.start), ctx, env);
+      return executeCommand(src.slice(next.start).replace(/^\/\s*/, ''), ctx, env);
     }
     case 'as':
     case 'at': {
