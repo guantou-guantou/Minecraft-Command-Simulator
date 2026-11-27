@@ -11,7 +11,9 @@ import type { StructureTemplate } from '../engine/structure.ts';
 import { sceneFrom } from '../language/complete.ts';
 import { parse } from '../language/parser.ts';
 import { Simulation } from '../engine/simulation.ts';
-import { exportAllCommands, exportAllManifest } from '../export.ts';
+import { exportAllCommands, exportAllManifest, exportFunctionFiles } from '../export.ts';
+import { desktop } from './desktop.ts';
+import { guardFunctions } from './functionsGuard.ts';
 import type { SimEvent } from '../engine/types.ts';
 import { holderName } from '../engine/scoreboard.ts';
 import { fmtBlock } from '../engine/world.ts';
@@ -220,8 +222,9 @@ export function DocView({ doc, active, host, layout, setLayout, setText, files, 
         <button onClick={act(() => { setPlaying(false); setLogFrom(0); sim.reset(); })}>{t('tb.reset')}</button>
         <span>{t('tb.tick', { n: sim.tick })}</span>
         <span className="sep" />
-        <button disabled={!checked.length} onClick={() => files.exportText(checked.length === 1 ? `${checked[0].name}.txt` : 'chains.txt', exportAllCommands(checked))}>{t('tb.exportCommands')}</button>
-        <button disabled={!checked.length} onClick={() => files.exportText(checked.length === 1 ? `${checked[0].name}.manifest.txt` : 'chains.manifest.txt', exportAllManifest(checked))}>{t('tb.exportManifest')}</button>
+        <button disabled={!checked.length} onClick={async () => { if (await guardFunctions(program, checked.flatMap((c) => c.nodes.map((n) => n.command)), t)) files.exportText(checked.length === 1 ? `${checked[0].name}.txt` : 'chains.txt', exportAllCommands(checked)); }}>{t('tb.exportCommands')}</button>
+        <button disabled={!checked.length} onClick={async () => { if (await guardFunctions(program, checked.flatMap((c) => c.nodes.map((n) => n.command)), t)) files.exportText(checked.length === 1 ? `${checked[0].name}.manifest.txt` : 'chains.manifest.txt', exportAllManifest(checked)); }}>{t('tb.exportManifest')}</button>
+        {desktop && <button disabled={!program.functions.length} onClick={() => void desktop?.exportFolder(exportFunctionFiles(program))}>{t('tb.exportFunctions')}</button>}
         <span className="sep" />
         {host.panels.map((p) => (
           <button key={p.id} className={panelId === p.id ? 'on' : ''} onClick={() => setPanelId(panelId === p.id ? null : p.id)}>{p.title}</button>

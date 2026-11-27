@@ -1,4 +1,5 @@
-import { readFileSync } from 'node:fs';
+import fs, { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { parse } from './language/parser.ts';
 import { lintCommands } from './language/cmdlint.ts';
@@ -7,7 +8,7 @@ import { Simulation } from './engine/simulation.ts';
 import { lintProgram } from './engine/lint.ts';
 import { snapshot } from './engine/snapshot.ts';
 import type { SimEvent } from './engine/types.ts';
-import { exportAllCommands, exportAllManifest, exportCommands, exportManifest } from './export.ts';
+import { exportAllCommands, exportAllManifest, exportCommands, exportFunctionFiles, exportManifest, functionWarning } from './export.ts';
 import { runTests } from './engine/testrun.ts';
 
 const USAGE = `mcsim: offline Minecraft Bedrock command simulator
@@ -16,7 +17,7 @@ Usage:
   mcsim check  <file|-> [--json]
   mcsim run    <file|-> [chain...] [--chain name]... [--all] [--ticks N] [--command "/cmd"]... [--state] [--json]
   mcsim test   <file|-> [--only a,b] [--json]
-  mcsim export <file|-> [chain...] [--chain name]... [--format commands|manifest]
+  mcsim export <file|-> [chain...] [--chain name]... [--format commands|manifest|functions] [--out dir]
 
   <file|-> is a .mcsim file, or - to read the script from standard input.
   Exit codes: 0 everything fine, 1 diagnostics / command errors / failed tests, 2 usage or file errors.
@@ -71,7 +72,7 @@ function subcommand(name: string, argv: string[]): never {
     allowPositionals: true,
     options: {
       json: { type: 'boolean' }, ticks: { type: 'string' }, chain: { type: 'string', multiple: true }, all: { type: 'boolean' },
-      command: { type: 'string', multiple: true }, state: { type: 'boolean' }, only: { type: 'string' }, format: { type: 'string' },
+      command: { type: 'string', multiple: true }, state: { type: 'boolean' }, only: { type: 'string' }, format: { type: 'string' }, out: { type: 'string' },
     },
   });
   const { text, label } = readSource(positionals[0]);
@@ -114,10 +115,24 @@ function subcommand(name: string, argv: string[]): never {
   }
 
   if (name === 'export') {
+    const format = values.format ?? 'commands';
+    if (format !== 'commands' && format !== 'manifest' && format !== 'functions') fail('--format must be commands, manifest or functions');
+    if (format === 'functions') {
+      if (!values.out) fail('--format functions needs --out <directory>');
+      const files = exportFunctionFiles(program);
+      if (!files.length) fail('The script defines no functions');
+      for (const f of files) {
+        const target = path.join(values.out, ...f.path.split('/'));
+        fs.mkdirSync(path.dirname(target), { recursive: true });
+        fs.writeFileSync(target, f.content);
+      }
+      console.error(`wrote ${files.length} function file(s) to ${values.out}`);
+      process.exit(0);
+    }
     const chains = pick();
     if (!chains.length) fail('No such chain');
-    const format = values.format ?? 'commands';
-    if (format !== 'commands' && format !== 'manifest') fail('--format must be commands or manifest');
+    const warn = functionWarning(program, chains.flatMap((c) => c.nodes.map((n) => n.command)));
+    if (warn.defined.length) console.error(`warning: the script defines ${warn.defined.length} function(s) (${warn.defined.join(', ')}); the exported commands do not contain them. Export them with --format functions.`);
     process.stdout.write(format === 'commands' ? exportAllCommands(chains) : exportAllManifest(chains));
     process.exit(0);
   }

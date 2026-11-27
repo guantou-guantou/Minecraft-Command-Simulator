@@ -239,6 +239,31 @@ function registerIpc() {
       return null;
     }
   });
+  ipcMain.handle('file:export-folder', async (_e, files) => {
+    if (!Array.isArray(files) || !files.length) return null;
+    const bad = files.find((f) => typeof f?.path !== 'string' || typeof f?.content !== 'string' || path.isAbsolute(f.path) || f.path.split(/[\\/]/).some((p) => !p || p === '.' || p === '..'));
+    if (bad) {
+      dialog.showErrorBox(T('cannotSave'), String(bad?.path));
+      return null;
+    }
+    const r = await dialog.showOpenDialog(win, { properties: ['openDirectory', 'createDirectory'] });
+    if (r.canceled || !r.filePaths[0]) return null;
+    try {
+      for (const f of files) {
+        const target = path.join(r.filePaths[0], ...f.path.split('/'));
+        fs.mkdirSync(path.dirname(target), { recursive: true });
+        atomicWrite(fs, target, f.content);
+      }
+      return r.filePaths[0];
+    } catch (e) {
+      dialog.showErrorBox(T('cannotSave'), `${r.filePaths[0]}\n\n${e.message}`);
+      return null;
+    }
+  });
+  ipcMain.handle('app:choose', (_e, message, buttons) => {
+    if (typeof message !== 'string' || !Array.isArray(buttons) || !buttons.length || !buttons.every((b) => typeof b === 'string')) return -1;
+    return dialog.showMessageBoxSync(win, { type: 'warning', message, buttons, defaultId: 0, cancelId: buttons.length - 1, noLink: true });
+  });
   ipcMain.handle('app:confirm-discard', (_e, name) => {
     const r = dialog.showMessageBoxSync(win, {
       type: 'warning',

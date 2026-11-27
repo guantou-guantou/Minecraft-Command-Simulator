@@ -17,6 +17,8 @@ contextBridge.exposeInMainWorld('desktop', {
   importStructure: () => ipcRenderer.invoke('structure:import'),
   exportStructure: (suggestedName, base64) => ipcRenderer.invoke('structure:export', suggestedName, base64),
   exportBdx: (suggestedName, base64) => ipcRenderer.invoke('structure:export-bdx', suggestedName, base64),
+  exportFolder: (files) => ipcRenderer.invoke('file:export-folder', files),
+  choose: (message, buttons) => ipcRenderer.invoke('app:choose', message, buttons),
   confirmDiscard: (name) => ipcRenderer.invoke('app:confirm-discard', name),
   setState: (state) => ipcRenderer.invoke('app:set-state', state),
   forceClose: () => ipcRenderer.invoke('app:force-close'),

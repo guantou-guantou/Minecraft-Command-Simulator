@@ -8,6 +8,7 @@ import { normalizeStructureName, type SavedEntity, type StructureTemplate } from
 import type { Vec3 } from '../../language/types.ts';
 import { exportMcstructure, importMcstructure } from '../../nbt/mcstructure.ts';
 import { baseName, desktop } from '../../ui/desktop.ts';
+import { guardFunctions } from '../../ui/functionsGuard.ts';
 import { useT } from '../../ui/I18n.tsx';
 import type { PluginContext } from '../host.ts';
 
@@ -90,8 +91,10 @@ export function StructuresPanel({ ctx }: { ctx: PluginContext }) {
     setPending(null);
   };
 
+  const sceneCommands = () => ctx.program.chains.flatMap((c) => c.nodes.map((n) => n.command));
   const doScene = async () => {
     try {
+      if (!(await guardFunctions(ctx.program, sceneCommands(), t))) return;
       const r = exportScene(ctx.program);
       const path = await desktop?.exportStructure('scene.mcstructure', toBase64(exportMcstructure(r.template)));
       if (!path) return;
@@ -125,6 +128,7 @@ export function StructuresPanel({ ctx }: { ctx: PluginContext }) {
   };
   const doSceneBdx = async () => {
     try {
+      if (!(await guardFunctions(ctx.program, sceneCommands(), t))) return;
       const r = exportSceneBlocks(ctx.program);
       await saveBdx('scene.bdx', r.cells, r.entities, r.origin, r.placed.map((p) => t('struct.scenePlaced', { chain: p.chain, pos: p.pos.join(', ') })).join('; '));
     } catch (e) {

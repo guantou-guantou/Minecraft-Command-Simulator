@@ -17,6 +17,10 @@ export interface DesktopApi {
   exportStructure(suggestedName: string, base64: string): Promise<string | null>;
   /** ase64 is the uncompressed BDX content; the main process adds the BD@ header and brotli compression. */
   exportBdx(suggestedName: string, base64: string): Promise<string | null>;
+  /** Asks for a folder and writes the files (relative paths with slashes) into it; resolves to the folder, or null when cancelled. */
+  exportFolder(files: { path: string; content: string }[]): Promise<string | null>;
+  /** A warning box with the given buttons; resolves to the index of the one pressed (the last one is also what closing the box does). */
+  choose(message: string, buttons: string[]): Promise<number>;
   confirmDiscard(name: string): Promise<boolean>;
   setState(state: { dirty: boolean; name: string }): Promise<void>;
   forceClose(): Promise<void>;
