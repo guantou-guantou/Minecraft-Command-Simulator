@@ -106,6 +106,7 @@ export class Simulation {
   runCommand(text: string, executor: Entity | null, pos: Vec3, line = 0, rotation?: [number, number], source: 'block' | 'console' = 'console'): boolean {
     const rot: [number, number] = rotation ? [...rotation] : executor ? [...executor.rot] : [0, 0];
     const src = text.trim().replace(/^\//, '');
+    if (!src) return false;
     let used = 0;
     let dropped = 0;
     const emit = (raw: SimEvent) => {

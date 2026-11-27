@@ -1,7 +1,7 @@
 import type { Chain } from './language/types.ts';
 
 export function exportCommands(chain: Chain): string {
-  return chain.nodes.map((n) => n.command).join('\n') + '\n';
+  return chain.nodes.filter((n) => n.command).map((n) => n.command).join('\n') + '\n';
 }
 
 /** One chain keeps the plain format; several chains get a # chain name heading each. */
@@ -21,7 +21,7 @@ export function exportManifest(chain: Chain): string {
     const { mode, power, conditional, delay } = n.cb;
     const at = n.pos ? ` | at (${n.pos.join(', ')})` : '';
     lines.push(`[${i + 1}] ${mode} | ${power} | ${conditional ? 'conditional' : 'unconditional'} | delay ${delay} | facing ${n.facing}${at}`);
-    lines.push(n.command);
+    lines.push(n.command || 'pass');
   });
   return lines.join('\n') + '\n';
 }

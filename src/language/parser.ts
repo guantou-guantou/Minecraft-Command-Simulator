@@ -15,6 +15,7 @@ import {
 import { parseSnbt } from '../nbt/snbt.ts';
 import { logicalLines, stripComment } from './lines.ts';
 import { extractFunctions } from './functions.ts';
+import { expandGates, type Entry } from './gates.ts';
 import { extractTests } from './testdsl.ts';
 import { TIME_NAMES } from '../engine/clock.ts';
 import { MAX_ITEM_COUNT, containerProblem, entitySlotKey, maxStack, slotKey, slotProblem, type Item } from './items.ts';
@@ -252,6 +253,29 @@ function validateLayout(prog: Program, diag: (line: number, message: string) => 
   }
 }
 
+/** Fills in the <<tpl:chain>> and <<gap:chain>> coordinates that chains with if:/run: parts leave for later, once every position is known. */
+function resolvePlaceholders(prog: Program, diag: (line: number, message: string) => void): void {
+  for (const c of prog.chains) {
+    for (const n of c.nodes) {
+      if (!n.command.includes('<<')) continue;
+      n.command = n.command.replace(/<<(tpl|gap):(\w+)>>/g, (all, kind: string, name: string) => {
+        const ref = prog.chains.find((x) => x.name === name);
+        const p = kind === 'tpl' ? ref?.nodes[0]?.pos : ref?.gapAt;
+        if (!p) {
+          diag(n.line, `cannot place ${all}`);
+          return all;
+        }
+        return p.join(' ');
+      });
+    }
+    if (!c.gapAt) continue;
+    const gap = c.gapAt;
+    const hit = prog.chains.find((o) => o.nodes.some((n) => n.pos && key3(n.pos) === key3(gap)));
+    const block = prog.blocks.find((b) => key3(b.position) === key3(gap));
+    if (hit || block) diag(c.line, `The gap cell (${gap.join(', ')}) in front of chain "${c.name}" must stay empty, but it is used by ${hit ? `chain "${hit.name}"` : `a block(...)`}`);
+  }
+}
+
 export function parse(input: string): Program {
   const fx = extractFunctions(input);
   const extracted = extractTests(fx.source);
@@ -310,17 +334,26 @@ export function parse(input: string): Program {
     if (handle) handles.add(handle);
   };
 
-  logicalLines(source).forEach((logical) => {
-    const line = logical.line;
+  const entries: Entry[] = [];
+  for (const logical of logicalLines(source)) {
     const text = stripComment(logical.text).trim();
-    if (!text) return;
-    lineIndented = /^\s/.test(physical[logical.physical] ?? '');
+    if (text) entries.push({ line: logical.line, text, indent: (/^\s*/.exec(physical[logical.physical] ?? '') ?? [''])[0].length });
+  }
+  const gx = expandGates(entries);
+  prog.diagnostics.push(...gx.diagnostics);
+  const gateChains = new Set<Chain>();
+  const fromGap = new Set<Chain>();
+
+  gx.entries.forEach((entry) => {
+    const line = entry.line;
+    const text = entry.text;
+    lineIndented = entry.indent > 0;
     try {
-      if (text.startsWith('/')) {
-        let command = text.slice(1).trim();
-        if (!command) throw new Error('Empty command');
+      if (text.startsWith('/') || text === 'pass') {
+        let command = text === 'pass' ? '' : text.slice(1).trim();
+        if (text !== 'pass' && !command) throw new Error('Empty command');
         try {
-          command = expandVars(command, vars, rots, scope.texts);
+          if (command) command = expandVars(command, vars, rots, scope.texts);
         } catch (e) {
           pending = null;
           throw e;
@@ -334,11 +367,12 @@ export function parse(input: string): Program {
         }
         const prev: Chain['nodes'][number] | undefined = current.nodes[current.nodes.length - 1];
         const first = !prev;
-        const mode: CbMode = pending?.spec.mode ?? (first ? 'imp' : 'cha');
+        const gate = first && gateChains.has(current);
+        const mode: CbMode = pending?.spec.mode ?? (first ? (gate ? 'rep' : fromGap.has(current) ? 'cha' : 'imp') : 'cha');
         const cb: CommandBlockSpec = {
           mode,
           conditional: false,
-          power: mode === 'cha' ? 'always_on' : 'needs_redstone',
+          power: mode === 'cha' || (gate && mode === 'rep') ? 'always_on' : 'needs_redstone',
           delay: 0,
           ...pending?.spec,
         };
@@ -364,10 +398,37 @@ export function parse(input: string): Program {
         let position: Vec3 | null = header[2] ? resolveVec(header[2], scope) : null;
         let facing: Dir = 'east';
         let rotation: Rot = [0, 0];
+        let gapAt: Vec3 | undefined;
+        let followed = false;
         if (header[3] !== undefined) {
           const args = parseArgs(header[3]);
-          checkKeys(args, ['position', 'facing', 'rotation'], 'chain');
+          checkKeys(args, ['position', 'facing', 'rotation', 'after', 'beside', 'gap'], 'chain');
           if (args.position) position = resolveVec(args.position, scope);
+          if (args.after || args.beside || args.gap) {
+            if (args.after && args.beside) throw new Error('chain: after= and beside= cannot be combined');
+            if (!args.after && !args.beside) throw new Error('chain: gap= needs after=');
+            if (args.gap && !args.after) throw new Error('chain: gap= only goes with after=');
+            if (args.position || args.facing) throw new Error('chain: after= and beside= place the chain themselves, so position= and facing= are not allowed');
+            const refName = (args.after ?? args.beside)!;
+            const ref = prog.chains.find((c) => c.name === refName);
+            if (!ref) throw new Error(`chain: unknown chain "${refName}" in after=/beside= (it must be written before this chain)`);
+            const first = ref.nodes[0];
+            const last = ref.nodes[ref.nodes.length - 1];
+            if (!ref.positioned || !first?.pos || !last?.pos) throw new Error(`chain: "${refName}" must be a chain with a position and at least one command block`);
+            const step = DIR_VEC[last.facing];
+            facing = last.facing;
+            rotation = [...ref.rotation];
+            if (args.after) {
+              const gap = args.gap !== undefined ? intArg(args.gap, 'chain: gap') : 1;
+              if (gap < 0) throw new Error('chain: gap cannot be negative');
+              position = last.pos.map((v, i) => v + step[i] * (gap + 1)) as Vec3;
+              gapAt = last.pos.map((v, i) => v + step[i]) as Vec3;
+            } else {
+              const side = last.facing === 'up' || last.facing === 'down' ? [1, 0, 0] : [0, 1, 0];
+              position = first.pos.map((v, i) => v + side[i]) as Vec3;
+            }
+            followed = true;
+          }
           if (args.facing) {
             if (!args.position) throw new Error('chain: facing requires position=...');
             facing = parseDir(args.facing, 'chain');
@@ -376,9 +437,11 @@ export function parse(input: string): Program {
         }
         current = {
           name, line, position: position ? (position.map(Math.floor) as Vec3) : [0, 0, 0],
-          positioned: !!position, facing, rotation, nodes: [],
+          positioned: !!position, facing, rotation, nodes: [], ...(gapAt ? { gapAt } : {}),
         };
         prog.chains.push(current);
+        if (entry.gate) gateChains.add(current);
+        if (followed) fromGap.add(current);
         headerChain = current;
         return;
       }
@@ -541,6 +604,7 @@ export function parse(input: string): Program {
     }
   });
   flushPending();
+  resolvePlaceholders(prog, diag);
   validateLayout(prog, diag);
   for (const it of prog.items) {
     if (!('pos' in it.target)) continue;

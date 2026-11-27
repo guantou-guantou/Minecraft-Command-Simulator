@@ -46,7 +46,7 @@ export function lineKind(line: string): Kind {
   const cut = commentStart(line);
   const trimmed = (cut < 0 ? line : line.slice(0, cut)).trim();
   if (trimmed.startsWith('/')) return 'cmd';
-  if (/^chain\s/.test(trimmed)) return 'chain';
+  if (/^chain\s/.test(trimmed) || /^(if|run)\s*:$/.test(trimmed) || trimmed === 'pass') return 'chain';
   if (/^[A-Za-z_]\w*\s*\(/.test(trimmed)) return 'decl';
   if (/^[A-Za-z_]\w*\s*=\s*(ent|block|fill|item)\s*\(/.test(trimmed)) return 'declassign';
   if (/^[A-Za-z_]\w*\s*=/.test(trimmed)) return 'assign';
