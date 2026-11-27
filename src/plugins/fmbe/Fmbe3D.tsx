@@ -3,11 +3,11 @@ import type { Vec3 } from '../../language/types.ts';
 import type { Simulation } from '../../engine/simulation.ts';
 import { DEFAULT_VIEW, project, type View } from '../particles/project.ts';
 import { VARIABLES } from './core.ts';
-import { cubeFaces, isFrontFacing, itemHue, modelMatrix, shade } from './render.ts';
+import { GAME_OUTPUTS, cubeFaces, effectiveVars, isFrontFacing, itemHue, modelMatrix, shade } from './render.ts';
 
 const W = 400;
 const H = 300;
-const NAMES = new Set(VARIABLES.map((v) => v.name));
+const NAMES = new Set([...VARIABLES.map((v) => v.name), ...GAME_OUTPUTS, 'extend_scale']);
 
 export function Fmbe3D({ sim, label, axesLabel }: { sim: Simulation; label: string; axesLabel: string }) {
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -72,7 +72,7 @@ export function Fmbe3D({ sim, label, axesLabel }: { sim: Simulation; label: stri
     }
     for (const e of models) {
       const hue = itemHue(e.items['slot.weapon.mainhand:0']?.id ?? e.type);
-      for (const f of cubeFaces(modelMatrix(e.molang), e.pos)) {
+      for (const f of cubeFaces(modelMatrix(effectiveVars(e.molang)), e.pos)) {
         if (!isFrontFacing(f.normal, view)) continue;
         const pts = f.corners.map(proj);
         items.push({

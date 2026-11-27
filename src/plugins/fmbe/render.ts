@@ -22,6 +22,23 @@ const rotX = (a: number): Mat => { const c = Math.cos(a * DEG), s = Math.sin(a *
 const rotY = (a: number): Mat => { const c = Math.cos(a * DEG), s = Math.sin(a * DEG); return [c, 0, -s, 0, 0, 1, 0, 0, s, 0, c, 0, 0, 0, 0, 1]; };
 const rotZ = (a: number): Mat => { const c = Math.cos(a * DEG), s = Math.sin(a * DEG); return [c, s, 0, 0, -s, c, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]; };
 
+/**
+ * The stretch of the Advanced FMBE: extend_scale along the direction given by extend_xrot and extend_yrot (the unit direction
+ * is the up axis turned by those angles, the same column the prerequisite builds as v.F.e1, e4, e7), applied before the rotations.
+ * The direction and the amount are worked out from the prerequisite's formulas and were not compared with the game.
+ */
+export function extensionMatrix(vars: Record<string, number | string | null>): Mat {
+  const g = (k: string, d: number) => (typeof vars[k] === 'number' ? (vars[k] as number) : d);
+  const ext = g('extend_scale', 1);
+  const xr = g('extend_xrot', -90) * DEG;
+  const yr = g('extend_yrot', 0) * DEG;
+  const e0 = Math.cos(yr);
+  const e5 = -Math.sin(xr);
+  const d = [e5 * Math.sin(yr), Math.cos(xr), -e5 * e0];
+  const k = ext - 1;
+  return [1 + k * d[0] * d[0], k * d[0] * d[1], k * d[0] * d[2], 0, k * d[1] * d[0], 1 + k * d[1] * d[1], k * d[1] * d[2], 0, k * d[2] * d[0], k * d[2] * d[1], 1 + k * d[2] * d[2], 0, 0, 0, 0, 1];
+}
+
 export const FMBE_DEFAULTS: Record<string, number> = {
   xpos: 0, ypos: 0, zpos: 0, xrot: 0, yrot: 0, zrot: 0, scale: 1, xzscale: 1, yscale: 1, xbasepos: 0, ybasepos: 0, zbasepos: 0,
 };
@@ -35,6 +52,7 @@ export function modelMatrix(vars: Record<string, number | string | null>): Mat {
   const v = (k: string) => (typeof vars[k] === 'number' ? (vars[k] as number) : FMBE_DEFAULTS[k]);
   let m = trans(v('xbasepos') / 16, v('ybasepos') / 16, v('zbasepos') / 16);
   m = mulMat(scaleM(v('scale') * v('xzscale'), v('scale') * v('yscale'), v('scale') * v('xzscale')), m);
+  m = mulMat(extensionMatrix(vars), m);
   m = mulMat(rotX(v('xrot')), m);
   m = mulMat(rotZ(v('zrot')), m);
   m = mulMat(rotY(v('yrot')), m);
@@ -100,4 +118,27 @@ export function itemHue(id: string): number {
   let h = 0;
   for (const c of id) h = (h * 31 + c.charCodeAt(0)) >>> 0;
   return h % 360;
+}
+
+/** The variables the game's own animations read; the prerequisites compute them from the custom ones, so they never change their names. */
+export const GAME_OUTPUTS = ['body_x_rot', 'body_z_rot', 'attack_body_rot_y', 'swelling_scale1', 'swelling_scale2', 'head_position_x', 'head_position_y', 'head_position_z', 'wing_flap', 'rail_offset.y', 'dance.x'];
+
+/**
+ * The model variables the preview should use. When the game-side outputs of the Basic Edition prerequisite are there, the
+ * custom inputs are worked out backwards from them (the prerequisite's own relations: body rotations are the rotations plus 90,
+ * the head position is the base position times the scale, and so on), so renaming v.xrot or v.scale in a prerequisite does not matter.
+ * Otherwise the custom variables are used as they are.
+ */
+export function effectiveVars(vars: Record<string, number | string | null>): Record<string, number | string | null> {
+  const g = (k: string) => (typeof vars[k] === 'number' ? (vars[k] as number) : null);
+  const [bx, bz, ay, s1, s2, hx, hy, hz, wf, ry, dx] = GAME_OUTPUTS.map(g);
+  if ([bx, bz, ay, s1, s2, hx, hy, hz, wf, ry, dx].some((v) => v === null) || !s1 || !s2) return vars;
+  const q1 = s1! / 2.1385;
+  const q2 = s2! / 2.1385;
+  return {
+    ...vars,
+    xrot: bx! - 90, yrot: bz! - 90, zrot: -ay!, xpos: 16 - wf! / 3.3333333, ypos: (ry! - 1.6485) * 16, zpos: -dx!,
+    scale: 1, xzscale: q1 * q1, yscale: q2 * q2,
+    xbasepos: hx! / (0.433875 * q1), ybasepos: (hy! / q2 - 10.05185375) / 0.467625, zbasepos: (17.108 - hz! / q1) / 0.433875,
+  };
 }
