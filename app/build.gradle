@@ -1,0 +1,62 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace = 'com.guantou.mcsim'
+    compileSdk = 36
+
+    defaultConfig {
+        applicationId = 'com.guantou.mcsim'
+        minSdk = 24
+        targetSdk = 36
+        versionCode = 400
+        versionName = '0.4.0'
+    }
+
+    buildFeatures {
+        buildConfig = true
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
+    }
+
+    buildTypes {
+        // AGP predefines `signingConfigs.debug` and creates ~/.android/debug.keystore on
+        // first use, which keeps the build working offline on a fresh machine.
+        debug {
+            applicationIdSuffix = ''
+            versionNameSuffix = ''
+            debuggable = true
+            minifyEnabled = false
+        }
+        release {
+            // A release APK is signed with the debug key on purpose: it is the
+            // "installable on a phone" artefact of this project, not a store build.
+            signingConfig = signingConfigs.debug
+            minifyEnabled = false
+            shrinkResources = false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    packagingOptions {
+        resources {
+            excludes += ['META-INF/*.version', 'META-INF/LICENSE*', 'META-INF/NOTICE*']
+        }
+    }
+
+    lint {
+        abortOnError = false
+        checkReleaseBuilds = false
+    }
+}
+
+dependencies {
+    // WebViewAssetLoader: serves assets/www over https://appassets.androidplatform.net.
+    implementation 'androidx.webkit:webkit:1.12.1'
+    // DocumentFile: recursive folder export through ACTION_OPEN_DOCUMENT_TREE.
+    implementation 'androidx.documentfile:documentfile:1.0.1'
+}

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Chinese is the default locale of the app (the upstream UI defaults to zh). -->
+    <string name="app_name">MC 命令模拟器</string>
+    <string name="dialog_discard">放弃</string>
+    <string name="dialog_cancel">取消</string>
+    <string name="dialog_ok">好</string>
+    <string name="dialog_unsaved">「%1$s」有未保存的修改，是否放弃？</string>
+    <string name="cannot_open">无法打开文件</string>
+    <string name="cannot_save">无法保存文件</string>
+    <string name="share_chooser">分享</string>
+    <string name="share_subject">%1$s — MC 命令模拟器</string>
+    <string name="web_assets_missing">Web 资源尚未打包进 APK</string>
+</resources>

@@ -1,0 +1,4 @@
+// Top-level build file. AGP 8.13.2 needs Gradle 8.13 and JDK 17+ (the build uses JDK 21).
+plugins {
+    id 'com.android.application' version '8.13.2' apply false
+}

@@ -1,0 +1,19 @@
+// MC Command Simulator — Android shell (see docs/android/architecture.md).
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+rootProject.name = 'MCCommandSimulatorAndroid'
+include ':app'
